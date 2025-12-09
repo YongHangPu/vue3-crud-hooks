@@ -18,13 +18,16 @@ export default defineConfig({
     // 库模式构建配置
     lib: {
       // 入口文件
-      entry: resolve(__dirname, 'src/index.ts'),
-      // 库名称（UMD/IIFE 模式下全局变量名）
-      name: 'Vue3CrudHooks',
-      // 输出文件名格式
-      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'js'}`,
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        useTablePage: resolve(__dirname, 'src/hooks/useTablePage.ts'),
+        useFormDialog: resolve(__dirname, 'src/hooks/useFormDialog.ts'),
+        useCrudPage: resolve(__dirname, 'src/hooks/useCrudPage.ts'),
+        useDataTransform: resolve(__dirname, 'src/hooks/useDataTransform.ts')
+      },
       // 输出格式：ES Module 和 CommonJS
-      formats: ['es', 'cjs']
+      formats: ['es', 'cjs'],
+      fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'mjs' : 'cjs'}`
     },
     rollupOptions: {
       // 这些依赖应该由使用该库的项目提供

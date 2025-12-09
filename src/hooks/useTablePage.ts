@@ -2,7 +2,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { to } from 'await-to-js'
 import { useDataTransform } from './useDataTransform'
-import type { TablePageConfig, DeleteConfig, ExportConfig, TableResult, PageParams, CustomTableConfig, TablePageHook } from '../types'
+import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook } from '../types'
 
 /**
  * 表格页面通用hooks

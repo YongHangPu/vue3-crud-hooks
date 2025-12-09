@@ -13,7 +13,7 @@ export interface MessageApi {
  * 列表数据结构接口
  */
 export interface TableResult<T = any> {
-  list: T[]
+  data: T[]
   total: number
   [key: string]: any
 }

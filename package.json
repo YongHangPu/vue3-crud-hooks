@@ -1,9 +1,9 @@
 {
   "name": "vue3-crud-hooks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "基于 Vue 3 和 Element Plus 的 CRUD 工具库",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "keywords": [
@@ -26,7 +26,27 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
+    },
+    "./useTablePage": {
+      "types": "./dist/hooks/useTablePage.d.ts",
+      "import": "./dist/useTablePage.mjs",
+      "require": "./dist/useTablePage.cjs"
+    },
+    "./useFormDialog": {
+      "types": "./dist/hooks/useFormDialog.d.ts",
+      "import": "./dist/useFormDialog.mjs",
+      "require": "./dist/useFormDialog.cjs"
+    },
+    "./useCrudPage": {
+      "types": "./dist/hooks/useCrudPage.d.ts",
+      "import": "./dist/useCrudPage.mjs",
+      "require": "./dist/useCrudPage.cjs"
+    },
+    "./useDataTransform": {
+      "types": "./dist/hooks/useDataTransform.d.ts",
+      "import": "./dist/useDataTransform.mjs",
+      "require": "./dist/useDataTransform.cjs"
     }
   },
   "scripts": {
