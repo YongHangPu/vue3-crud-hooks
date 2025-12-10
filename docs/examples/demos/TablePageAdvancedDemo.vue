@@ -48,7 +48,7 @@
  * 参数：无
  * 返回值：无（SFC 组件）
  */
-import useTablePage from '@/hooks/useTablePage'
+import { useTablePage } from 'vue3-crud-hooks'
 import { ElMessage } from 'element-plus'
 
 /**

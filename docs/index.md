@@ -7,11 +7,11 @@ hero:
   tagline: 精简、可复用的增删改查页面方案
   actions:
     - theme: brand
-      text: API 参考
-      link: /reference/use-table-page
-    - theme: alt
       text: 快速开始
       link: /guide/getting-started
+    - theme: alt
+      text: API 参考
+      link: /reference/use-table-page
     - theme: alt
       text: 综合 CRUD
       link: /reference/use-crud-page

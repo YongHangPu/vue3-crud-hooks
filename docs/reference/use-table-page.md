@@ -63,7 +63,7 @@ demo-preview=../examples/demos/TablePageDemo.vue
  * 最小示例：获取列表并分页
  * 功能：演示基本入参与返回值
  */
-import useTablePage from '@/hooks/useTablePage'
+import { useTablePage } from 'vue3-crud-hooks'
 
 const fetchData = async (params: any): Promise<{ rows: any[]; total: number }> => {
   // 调用后端接口
@@ -101,7 +101,7 @@ const {
  * 进阶：时间范围、数组字段、参数预处理与导出
  * 功能：展示完整配置的常见组合
  */
-import useTablePage from '@/hooks/useTablePage'
+import { useTablePage } from 'vue3-crud-hooks'
 
 const fetchData = async (params: any): Promise<{ rows: any[]; total: number }> => ({ rows: [], total: 0 })
 const deleteApi = async (id: number) => ({ msg: '删除成功' })

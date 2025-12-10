@@ -1,7 +1,15 @@
 {
   "name": "vue3-crud-hooks",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "基于 Vue 3 和 Element Plus 的 CRUD 工具库",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YongHangPu/vue3-crud-hooks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YongHangPu/vue3-crud-hooks/issues"
+  },
+  "author": "YongHangPu",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -17,7 +25,6 @@
     "search",
     "element-plus-crud"
   ],
-  "author": "YongHangPu",
   "files": [
     "dist",
     "README.md"
@@ -57,11 +64,12 @@
     "docs:preview": "vitepress preview docs"
   },
   "peerDependencies": {
-    "vue": "^3.0.0",
-    "element-plus": "^2.0.0"
+    "element-plus": "^2.0.0",
+    "vue": "^3.0.0"
   },
   "dependencies": {
-    "await-to-js": "^3.0.0"
+    "await-to-js": "^3.0.0",
+    "vue3-crud-hooks": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",

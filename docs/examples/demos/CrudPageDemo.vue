@@ -52,7 +52,7 @@
  * 参数：无
  * 返回值：无（SFC 组件）
  */
-import { useCrudPage } from '@/hooks/useCrudPage'
+import { useCrudPage } from 'vue3-crud-hooks'
 
 /**
  * 表单规则常量

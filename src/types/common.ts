@@ -35,10 +35,4 @@ export interface DataTransformConfig<T = any> {
   beforeSubmit?: (data: T) => any
   /** 获取详情后转换 */
   afterGet?: (data: any) => T
-  /** 搜索参数预处理 */
-  beforeSearch?: (params: any) => any
-  /** 删除成功回调 */
-  onDeleteSuccess?: () => void
-  /** 批量删除成功回调 */
-  onBatchDeleteSuccess?: () => void
 }

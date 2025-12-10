@@ -23,6 +23,8 @@ pnpm run docs:dev
 ## 列表页：useTablePage（最小可用）
 
 ```ts
+import { useTablePage } from 'vue3-crud-hooks'
+
 /**
  * 获取列表数据的函数
  * 功能：根据分页与搜索参数返回 rows/total
@@ -45,7 +47,7 @@ const {
   handleReset,
   handlePageChange,
   handleSizeChange
-} = useTablePage(fetchData, { keyword: '' }, { dataKey: 'rows', totalKey: 'total', autoFetch: true })
+} = useTablePage(fetchData, { keyword: '' }, { autoFetch: true })
 ```
 
 ```vue
@@ -73,6 +75,8 @@ const {
 ## 表单弹窗：useFormDialog（最小可用）
 
 ```ts
+import { useFormDialog } from 'vue3-crud-hooks'
+
 /**
  * 表单接口
  * 功能：新增/更新/获取单条数据
@@ -122,6 +126,8 @@ const {
 ## 综合：useCrudPage（一步到位）
 
 ```ts
+import { useCrudPage } from 'vue3-crud-hooks'
+
 /**
  * 综合 CRUD Hook
  * 功能：整合列表与表单，统一配置驱动

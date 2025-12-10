@@ -67,6 +67,8 @@ export const Api = {
 ## 与 useTablePage 对接
 
 ```ts
+import { useTablePage } from 'vue3-crud-hooks'
+
 /**
  * 列表 Hook 对接后端
  */
@@ -81,6 +83,8 @@ const hook = useTablePage(
 ## 与 useFormDialog 对接
 
 ```ts
+import { useFormDialog } from 'vue3-crud-hooks'
+
 /** 表单 Hook 对接后端 */
 const form = useFormDialog({
   initialFormData: { name: '', tags: [] },
@@ -97,12 +101,13 @@ const form = useFormDialog({
 ## 与 useCrudPage 一步打通
 
 ```ts
+import { useCrudPage } from 'vue3-crud-hooks'
+
 const crud = useCrudPage({
   apis: { list: Api.list, add: Api.add, update: Api.update, delete: Api.delete, get: Api.get },
   form: { initialData: { name: '' }, rules: { name: [{ required: true }] } },
   search: { initialParams: { keyword: '', range: [] }, timeFields: [{ field: 'range', prefix: { start: 'beginTime', end: 'endTime' }] } },
-  table: { autoFetch: true },
-  advanced: { dataKey: 'list', totalKey: 'totalCount' }
+  table: { autoFetch: true, dataKey: 'list', totalKey: 'totalCount' }
 })
 ```
 

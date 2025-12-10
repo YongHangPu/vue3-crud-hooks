@@ -10,5 +10,6 @@ export { default as useTablePage } from './hooks/useTablePage'
 export * from './hooks/useFormDialog'
 export * from './hooks/useCrudPage'
 export * from './hooks/useDataTransform'
+export * from './hooks/useMessage'
 
 export * from './utils'

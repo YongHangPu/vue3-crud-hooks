@@ -26,7 +26,7 @@
  * 参数：无
  * 返回值：无（SFC 组件）
  */
-import { useFormDialog } from '@/hooks/useFormDialog'
+import { useFormDialog } from 'vue3-crud-hooks'
 
 /**
  * 表单规则常量

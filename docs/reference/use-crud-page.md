@@ -21,7 +21,7 @@ demo-preview=../examples/demos/CrudPageDemo.vue
 
 - 常用字段
   - `apis.list/add/update/delete/batchDelete/deleteAll/get`
-  - `form.initialData/rules/onSuccess`
+  - `form.initialData/rules/onSuccess/beforeSubmit/afterGet`
   - `search.initialParams/timeFields/arrayFields`
   - `table.autoFetch` 与 `customTableConfig`
 
@@ -54,7 +54,7 @@ demo-preview=../examples/demos/CrudPageDemo.vue
 /**
  * 简化配置：最小 CRUD 页面
  */
-import { useCrudPage } from '@/hooks/useCrudPage'
+import { useCrudPage } from 'vue3-crud-hooks'
 
 const list = async (params: any) => ({ rows: [], total: 0 })
 const add = async (data: any) => ({ msg: '新增成功' })
@@ -75,7 +75,7 @@ const hook = useCrudPage({
 /**
  * 完整配置：兼容旧配置结构
  */
-import { useCrudPage } from '@/hooks/useCrudPage'
+import { useCrudPage } from 'vue3-crud-hooks'
 
 const hook = useCrudPage({
   listApi: async (p) => ({ rows: [], total: 0 }),

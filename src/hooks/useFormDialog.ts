@@ -1,6 +1,6 @@
 import { ref, nextTick, toRaw, type Ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { to } from 'await-to-js'
+import { useMessage } from './useMessage'
 import type { FormDialogConfig, FormDialogHook } from '../types'
 
 /**
@@ -34,10 +34,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
   const formData = ref<T>(deepClone(config.initialFormData)) as Ref<T>
 
   // 消息提示封装
-  const showMessage = {
-    success: (msg: string) => config.messageApi?.success?.(msg) ?? ElMessage.success(msg),
-    error: (msg: string) => config.messageApi?.error?.(msg) ?? console.error(msg)
-  }
+  const showMessage = useMessage(config.messageApi)
 
   /**
    * 打开弹窗

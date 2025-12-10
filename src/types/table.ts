@@ -2,7 +2,37 @@ import type { MessageApi } from './common'
 
 import type { Ref, ComputedRef } from 'vue'
 
-export interface TableColumnConfig {
+/**
+ * 分页配置接口
+ */
+export interface PaginationConfig {
+  total?: number
+  pageSize?: number
+  [key: string]: any
+}
+
+/**
+ * 表格操作按钮配置
+ */
+export interface TableButtonConfig<T = any> {
+  /** 按钮文本 */
+  btnText?: string
+  /** 触发的事件名 */
+  event: string
+  /** 按钮展现类型 */
+  btnType?: 'link' | 'button'
+  /** 按钮样式类型 */
+  type?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'text' | 'default'
+  /** 是否禁用 */
+  disabled?: boolean | ((row: T) => boolean)
+  /** 是否可见 */
+  visible?: (row: T) => boolean
+  /** 其他 props 透传给按钮组件 */
+  props?: Record<string, any>
+  [key: string]: any
+}
+
+export interface TableColumnConfig<T = any> {
   /** 字段名 */
   prop?: string
   /** 标题 */
@@ -24,9 +54,9 @@ export interface TableColumnConfig {
   /** 是否显示溢出提示 */
   showOverflowTooltip?: boolean
   /** 格式化函数 */
-  formatter?: (row: any, column: any, cellValue: any, index: number) => any
+  formatter?: (row: T, column: any, cellValue: any, index: number) => any
   /** 操作按钮配置（仅当 type 为 action 时有效） */
-  buttons?: Array<TableButtonConfig>
+  buttons?: Array<TableButtonConfig<T>>
   /** 是否隐藏 */
   hidden?: boolean
   [key: string]: any
@@ -61,108 +91,67 @@ export interface TablePageHook<T = any> {
   handleSelectionChange: (selection: T[]) => void
   handleDelete: (row: T) => Promise<void>
   handleBatchDelete: () => Promise<void>
-  handleExport: (exportUrl: string, filename: string, params?: any) => void
+  handleExport: (options?: { url?: string; filename?: string; params?: any }) => void
   tableConfig: ComputedRef<CustomTableConfig | null>
   tableEventHandlers: {
-    onSelectionChange: (selection: any[]) => void
+    onSelectionChange: (selection: T[]) => void
     onPagination: (pagination: { page: number; limit: number }) => void
-    onAction: (event: string, row: any, index: number) => void
+    onAction: (event: string, row: T, index: number) => void
   }
-  setTableColumns: (columns: TableColumnConfig[]) => void
+  setTableColumns: (columns: TableColumnConfig<T>[]) => void
 }
 
-/**
- * 表格操作按钮配置
- */
-export interface TableButtonConfig {
-  /** 按钮文本 */
-  btnText?: string
-  /** 触发的事件名 */
-  event: string
-  /** 按钮展现类型 */
-  btnType?: 'link' | 'button'
-  /** 按钮样式类型 */
-  type?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'text' | 'default'
-  /** 是否禁用 */
-  disabled?: boolean | ((row: any) => boolean)
-  /** 是否可见 */
-  visible?: (row: any) => boolean
-  /** 其他 props 透传给按钮组件 */
-  props?: Record<string, any>
-  [key: string]: any
-}
-
-/**
- * 分页配置接口
- */
-export interface PaginationConfig {
-  total?: number
-  pageSize?: number
-  currentPage?: number
-  pageSizes?: number[]
-  layout?: string
-  [key: string]: any
-}
-
-/**
- * 表格页面配置接口
- * @interface TablePageConfig
- */
 export interface TablePageConfig {
   /** 响应数据中的数据字段名，默认为 'rows' */
   dataKey?: string
   /** 响应数据中的总数字段名，默认为 'total' */
   totalKey?: string
-  /** 是否自动检测数据结构，默认为 false */
+  /** 是否自动检测响应数据结构 */
   autoDetect?: boolean
-  /** 是否自动调用获取表格数据接口，默认为 true */
+  /** 是否自动获取数据，默认为 true */
   autoFetch?: boolean
-  /** 参数预处理函数 */
-  preprocessParams?: (params: Record<string, any>) => Record<string, any> | null | false
-  /** CustomTable组件配置 */
+  /** 搜索参数预处理函数 */
+  beforeSearch?: (params: any) => any
+  /** CustomTable 组件配置 */
   customTableConfig?: CustomTableConfig
-  /** 需要进行数组/字符串转换的字段名数组 */
+  /** 数组字段，用于数据转换 */
   arrayFields?: string[]
-  /** 时间范围字段配置 */
+  /** 时间字段，用于数据转换 */
   timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
   /** 自定义消息提示配置 */
   messageApi?: Partial<MessageApi>
+  /** 导出URL */
+  exportUrl?: string
 }
 
-/**
- * 删除操作配置接口
- */
 export interface DeleteConfig {
-  /** 删除单条接口 */
+  /** 删除数据的API函数 */
   deleteApi?: (id: string | number) => Promise<any>
-  /** 批量删除接口 */
+  /** 批量删除数据的API函数 */
   batchDeleteApi?: (ids: (string | number)[]) => Promise<any>
-  /** 删除全部接口 */
+  /** 删除所有数据的API函数 */
   deleteAllApi?: () => Promise<any>
-  /** 数据项ID字段名，默认为 'id' */
+  /** 数据主键字段名，默认为 'id' */
   idKey?: string
-  /** 删除确认消息 */
+  /** 删除确认提示文字 */
   confirmMessage?: string
-  /** 批量删除确认消息 */
+  /** 批量删除确认提示文字 */
   batchConfirmMessage?: string
-  /** 删除全部数据确认消息 */
+  /** 删除所有数据确认提示文字 */
   deleteAllConfirmMessage?: string
-  /** 删除成功后的回调 */
+  /** 删除成功回调 */
   onDeleteSuccess?: (deletedRow: any) => void
-  /** 批量删除成功后的回调 */
+  /** 批量删除成功回调 */
   onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
 }
 
-/**
- * 导出配置接口
- */
 export interface ExportConfig {
-  /** 数组字段配置 */
+  /** 导出函数 */
+  exportFunction?: (options: { url?: string; params: any; filename: string }) => void
+  /** 数组字段，导出时转换为字符串 */
   arrayFields?: string[]
-  /** 时间字段配置 */
+  /** 时间字段，导出时处理 */
   timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
-  /** 数据项ID字段名 */
+  /** 数据主键字段名 */
   idKey?: string
-  /** 自定义导出函数 */
-  exportFunction?: (url: string, params: any, filename: string) => void
 }

@@ -19,11 +19,6 @@ title: 常见错误与排查
 - 现象：`ElMessage` 或 Vue API 未找到
 - 处理：确认 `unplugin-auto-import` 与 `unplugin-vue-components` 已在 `docs/.vitepress/config.mts` 配置；重新启动 `pnpm run docs:dev`
 
-## 别名未生效
-
-- 现象：`@/hooks/...` 报错
-- 处理：在 `docs/.vitepress/config.mts` 中设置 `resolve.alias: { '@': path.resolve(__dirname, '../examples') }`
-
 ## Element Plus 样式未加载
 
 - 现象：组件样式缺失

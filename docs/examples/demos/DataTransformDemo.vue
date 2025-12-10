@@ -29,7 +29,7 @@
  * 参数：无
  * 返回值：无（SFC 组件）
  */
-import { useDataTransform } from '@/hooks/useDataTransform'
+import { useDataTransform } from 'vue3-crud-hooks'
 
 /**
  * 表单状态类型定义

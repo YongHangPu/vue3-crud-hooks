@@ -1,7 +1,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { to } from 'await-to-js'
 import { useDataTransform } from './useDataTransform'
+import { useMessage } from './useMessage'
 import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook } from '../types'
 
 /**
@@ -21,12 +21,12 @@ export default function useTablePage<T = any>(
   deleteConfig: DeleteConfig = {},
   exportConfig: ExportConfig = {}
 ): TablePageHook<T> {
-  const defaultConfig: Required<Pick<TablePageConfig, 'dataKey' | 'totalKey' | 'autoDetect' | 'autoFetch' | 'preprocessParams'>> = {
+  const defaultConfig: Required<Pick<TablePageConfig, 'dataKey' | 'totalKey' | 'autoDetect' | 'autoFetch' | 'beforeSearch'>> = {
     dataKey: 'rows',
     totalKey: 'total',
     autoDetect: true, // 默认开启自动检测
     autoFetch: true,
-    preprocessParams: (params) => params
+    beforeSearch: (params) => params
   }
 
   // 默认删除配置
@@ -66,18 +66,7 @@ export default function useTablePage<T = any>(
   const { processTimeRange, arrayToString } = useDataTransform()
 
   // 消息提示封装
-  const showMessage = {
-    success: (msg: string) => config.messageApi?.success?.(msg) ?? ElMessage.success(msg),
-    error: (msg: string) => config.messageApi?.error?.(msg) ?? console.error(msg),
-    warning: (msg: string) => config.messageApi?.warning?.(msg) ?? ElMessage.warning(msg),
-    confirm: (msg: string, title = '提示', options?: any) =>
-      config.messageApi?.confirm?.(msg, title, options) ?? ElMessageBox.confirm(msg, title, {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-        ...options
-      })
-  }
+  const showMessage = useMessage(config.messageApi)
 
   // 表格数据
   const tableData = ref<any[]>([])
@@ -176,8 +165,8 @@ export default function useTablePage<T = any>(
       }
 
       // 如果配置了预处理函数，执行预处理
-      if (finalConfig.preprocessParams) {
-        const processedParams = finalConfig.preprocessParams(requestParams)
+      if (finalConfig.beforeSearch) {
+        const processedParams = finalConfig.beforeSearch(requestParams)
         // 如果预处理函数返回null或false，则不执行后续请求
         if (!processedParams) {
           loading.value = false
@@ -453,17 +442,17 @@ export default function useTablePage<T = any>(
 
   /**
    * 导出处理
-   * @description 导出表格数据为Excel文件
-   * @param exportUrl 导出接口URL
-   * @param filename 导出文件名（不含扩展名）
-   * @param params 导出参数（可选），默认为空对象
+   * @description 导出表格数据
+   * @param options 导出配置选项
    */
-  const handleExport = (exportUrl: string, filename: string, params?: any) => {
+  const handleExport = (options: { url?: string; filename?: string; params?: any } = {}) => {
     if (!finalExportConfig.exportFunction) {
       console.error('未配置 exportFunction，无法执行导出')
       showMessage.warning('导出功能未配置')
       return
     }
+
+    const { url, filename = 'export', params } = options
 
     // query参数从搜索表单提取，也包括勾选的行数据的id
     const query = {
@@ -486,7 +475,11 @@ export default function useTablePage<T = any>(
     }
 
     // 调用自定义导出函数
-    finalExportConfig.exportFunction(exportUrl, processed, `${filename}_${new Date().getTime()}.xlsx`)
+    finalExportConfig.exportFunction({
+      url,
+      params: processed,
+      filename
+    })
   }
 
   // 组件挂载时根据配置决定是否自动获取数据

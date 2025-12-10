@@ -69,7 +69,7 @@ demo-preview=../examples/demos/FormDialogDemo.vue
  * 最小示例：新增/编辑弹窗
  * 功能：演示基本配置与返回值
  */
-import { useFormDialog } from '@/hooks/useFormDialog'
+import { useFormDialog } from 'vue3-crud-hooks'
 
 const addApi = async (data: any) => ({ msg: '新增成功' })
 const updateApi = async (data: any) => ({ msg: '更新成功' })
@@ -118,7 +118,7 @@ const {
 /**
  * 进阶：数据转换与自定义成功回调
  */
-import { useFormDialog } from '@/hooks/useFormDialog'
+import { useFormDialog } from 'vue3-crud-hooks'
 
 const addApi = async (data: any) => ({ msg: '新增成功' })
 const updateApi = async (data: any) => ({ msg: '更新成功' })

@@ -27,6 +27,8 @@ export interface CrudPageConfig<T = any> extends FormDialogConfig<T>, TablePageC
   listApi: (params: any) => Promise<any>
   /** 搜索表单初始值 */
   initialSearchForm?: any
+  /** 导出URL (覆盖 TablePageConfig 中的 exportUrl，以保持向后兼容) */
+  exportUrl?: string
 }
 
 /**
@@ -50,6 +52,14 @@ export interface SimpleCrudConfig<T = any> {
   form: {
     initialData: T
     rules?: any
+    /** 提交前数据转换 */
+    beforeSubmit?: (data: T) => any
+    /** 获取数据后转换 */
+    afterGet?: (data: any) => T
+    /** 成功回调 */
+    onSuccess?: () => void
+    /** 提交成功回调 */
+    onSubmitSuccess?: (response: any, mode: 'add' | 'edit', formData: T) => Promise<void> | void
   }
   /** 表格配置 */
   table: {
@@ -67,6 +77,8 @@ export interface SimpleCrudConfig<T = any> {
   /** 搜索配置 */
   search?: {
     initialData: any
+    /** 搜索前参数转换 */
+    beforeSearch?: (params: any) => any
   }
   /** 高级配置 */
   advanced?: {
@@ -74,15 +86,8 @@ export interface SimpleCrudConfig<T = any> {
     arrayFields?: string[]
     /** 时间字段 */
     timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
-    /** 数据转换 */
-    dataTransform?: {
-      beforeSubmit?: (data: T) => any
-      afterGet?: (data: any) => T
-    }
     /** 回调函数 */
     callbacks?: {
-      onSuccess?: () => void
-      onSubmitSuccess?: (response: any, mode: 'add' | 'edit', formData: T) => Promise<void> | void
       onDeleteSuccess?: (deletedRow: any) => void
       onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
     }

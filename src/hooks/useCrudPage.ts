@@ -37,6 +37,7 @@ function convertToFullConfig<T>(simpleConfig: SimpleCrudConfig<T>): CrudPageConf
     customTableConfig: table.config,
     dataKey: table.dataKey,
     totalKey: table.totalKey,
+    beforeSearch: search?.beforeSearch,
 
     // 搜索配置
     initialSearchForm: search?.initialData,
@@ -44,17 +45,21 @@ function convertToFullConfig<T>(simpleConfig: SimpleCrudConfig<T>): CrudPageConf
     // 高级配置
     arrayFields: advanced.arrayFields,
     timeFields: advanced.timeFields,
-    dataTransform: advanced.dataTransform,
+    dataTransform: {
+      beforeSubmit: form.beforeSubmit,
+      afterGet: form.afterGet
+    },
     messageApi: advanced.messageApi,
 
     // 回调函数
-    onSuccess: advanced.callbacks?.onSuccess,
-    onSubmitSuccess: advanced.callbacks?.onSubmitSuccess,
+    onSuccess: form.onSuccess,
+    onSubmitSuccess: form.onSubmitSuccess,
     onDeleteSuccess: advanced.callbacks?.onDeleteSuccess,
     onBatchDeleteSuccess: advanced.callbacks?.onBatchDeleteSuccess,
 
     // 导出配置
-    exportFunction: apis.export ? (url, params, filename) => apis.export!(params) : undefined
+    exportFunction: apis.export ? ({ params }) => apis.export!(params) : undefined,
+    exportUrl: table.exportUrl
   }
 }
 
@@ -83,11 +88,12 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
       totalKey: normalizedConfig.totalKey,
       autoDetect: normalizedConfig.autoDetect,
       autoFetch: normalizedConfig.autoFetch,
-      preprocessParams: normalizedConfig.preprocessParams,
+      beforeSearch: normalizedConfig.beforeSearch,
       customTableConfig: normalizedConfig.customTableConfig,
       arrayFields: normalizedConfig.arrayFields,
       timeFields: normalizedConfig.timeFields,
-      messageApi: normalizedConfig.messageApi
+      messageApi: normalizedConfig.messageApi,
+      exportUrl: normalizedConfig.exportUrl
     },
     {
       deleteApi: normalizedConfig.deleteApi,
@@ -233,14 +239,12 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
 
   /**
    * 导出处理
-   * @description 导出表格数据为Excel文件
-   * @param exportUrl 导出接口URL
-   * @param filename 导出文件名（不含扩展名）
-   * @param params 导出参数（可选），默认为空对象
+   * @description 导出表格数据
+   * @param options 导出配置选项
    */
-  const handleExport = (exportUrl: string, filename: string, params?: any) => {
+  const handleExport = (options?: { url?: string; filename?: string; params?: any }) => {
     // 直接使用 tablePageHook 的导出方法
-    tablePageHook.handleExport(exportUrl, filename, params)
+    tablePageHook.handleExport(options)
   }
 
   return {

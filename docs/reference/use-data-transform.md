@@ -46,7 +46,7 @@ demo-preview=../examples/demos/DataTransformDemo.vue
 /**
  * 示例：数组/字符串互转
  */
-import { useDataTransform, deepCleanEmptyFields } from '@/hooks/useDataTransform'
+import { useDataTransform, deepCleanEmptyFields } from 'vue3-crud-hooks'
 const { arrayToString, stringToArray, processTimeRange, cleanEmptyFields, convertNumbers } = useDataTransform()
 
 const data1 = arrayToString({ tags: ['A', 'B'] }, ['tags'], '、')
