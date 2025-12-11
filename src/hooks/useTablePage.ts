@@ -14,13 +14,13 @@ import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, Ta
  * @param exportConfig 导出配置选项
  * @returns 返回表格相关状态和方法
  */
-export default function useTablePage<T = any>(
+export const useTablePage = <T = any>(
   fetchData: (params: any) => Promise<any>,
   searchForm: Record<string, any> = {},
   config: TablePageConfig = {},
   deleteConfig: DeleteConfig = {},
   exportConfig: ExportConfig = {}
-): TablePageHook<T> {
+): TablePageHook<T> => {
   const defaultConfig: Required<Pick<TablePageConfig, 'dataKey' | 'totalKey' | 'autoDetect' | 'autoFetch' | 'beforeSearch'>> = {
     dataKey: 'rows',
     totalKey: 'total',

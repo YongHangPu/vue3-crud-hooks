@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import useTablePage from './useTablePage'
+import { useTablePage } from './useTablePage'
 import { useFormDialog } from './useFormDialog'
 import { useDataTransform } from './useDataTransform'
 import type { CrudPageConfig, SimpleCrudConfig, CrudPageHook } from '../types'

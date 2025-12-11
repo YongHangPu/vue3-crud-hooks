@@ -9,9 +9,10 @@
 
 - 🚀 **开箱即用**：提供 `useCrudPage`, `useTablePage`, `useFormDialog` 等核心 Hook，覆盖绝大多数业务场景
 - 📦 **逻辑复用**：将表格管理、分页、搜索、表单弹窗、数据导出等繁琐逻辑高度封装
+- 🧩 **组件支持**：内置 `CustomTable` 和 `Pagination` 组件，与 Hooks 完美配合，进一步减少模板代码
 - 🌲 **按需引入**：支持 Tree Shaking 和子路径导入，确保包体积最小化
 - 🛠 **高度可配置**：支持简化配置（快速开发）和完整配置（复杂场景），灵活应对各种需求
-- 🧩 **TypeScript**：完全使用 TypeScript 编写，提供完整的类型推断和智能提示
+- 📝 **TypeScript**：完全使用 TypeScript 编写，提供完整的类型推断和智能提示
 - 🔌 **独立运行**：模块解耦，你可以单独使用 `useTablePage` 管理列表，或单独使用 `useFormDialog` 管理弹窗
 - 📢 **消息解耦**：内置 `useMessage` Hook，支持自定义消息提示 UI，默认适配 Element Plus
 
@@ -30,63 +31,109 @@ yarn add vue3-crud-hooks
 
 ## 🔨 快速开始
 
-### 1. 完整 CRUD 页面 (`useCrudPage`)
+### 1. 完整 CRUD 页面 (`useCrudPage` + `CustomTable`)
 
-最常用的 Hook，整合了列表和弹窗逻辑，适合标准的增删改查页面。
+最常用的方式，结合 Hook 和组件，极大地简化代码。
 
 ```vue
-<script setup lang="ts">
-import { useCrudPage } from 'vue3-crud-hooks'
-import { getList, addData, updateData, deleteData, exportData } from '@/api/demo'
+<template>
+  <div class="app-container">
+    <!-- 搜索栏 -->
+    <div class="search-container">
+      <el-input v-model="searchParams.keyword" placeholder="搜索关键字" />
+      <el-button type="primary" @click="handleSearch">搜索</el-button>
+      <el-button @click="handleReset">重置</el-button>
+      <el-button type="primary" @click="openDialog('add')">新增</el-button>
+    </div>
 
-// 一行代码搞定 CRUD 逻辑
+    <!-- 表格组件 -->
+    <CustomTable
+      :config="tableConfig"
+      :data="tableData"
+      :loading="loading"
+      v-bind="tableEventHandlers"
+    >
+      <!-- 自定义列插槽 -->
+      <template #status="{ row }">
+        <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+          {{ row.status === 1 ? '启用' : '禁用' }}
+        </el-tag>
+      </template>
+    </CustomTable>
+
+    <!-- 弹窗组件 -->
+    <el-dialog v-model="dialogVisible" :title="dialogMode === 'add' ? '新增' : '编辑'">
+      <el-form :model="formData" label-width="80px">
+        <el-form-item label="名称">
+          <el-input v-model="formData.name" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitForm">确定</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useCrudPage, CustomTable } from 'vue3-crud-hooks'
+import { getList, addData, updateData, deleteData } from '@/api/demo'
+
 const {
-  tableData,      // 表格数据
-  pageInfo,       // 分页信息
-  loading,        // 加载状态
-  dialogVisible,  // 弹窗显示状态
-  dialogMode,     // 弹窗模式 (add/edit)
-  formData,       // 表单数据
-  handleSearch,   // 搜索方法
-  handleReset,    // 重置搜索
-  handleDelete,   // 删除方法
-  handleExport,   // 导出方法
-  openDialog,     // 打开弹窗
-  submitForm      // 提交表单
+  // 状态
+  tableData,
+  loading,
+  searchParams,
+  dialogVisible,
+  dialogMode,
+  formData,
+  
+  // 方法
+  handleSearch,
+  handleReset,
+  openDialog,
+  submitForm,
+  
+  // 组件配置与事件
+  tableConfig,
+  tableEventHandlers
 } = useCrudPage({
-  // 1. API 配置（必填）
   apis: {
     list: getList,
     add: addData,
     update: updateData,
-    delete: deleteData,
-    export: exportData // 可选：导出接口
+    delete: deleteData
   },
-  // 2. 表格配置
-  table: {
-    dataKey: 'list', // 接口返回的数据字段名
-    totalKey: 'total' // 接口返回的总数字段名
+  // 表格配置（用于生成 CustomTable 配置）
+  customTableConfig: {
+    columns: [
+      { type: 'selection', width: 55 },
+      { type: 'index', label: '序号', width: 60 },
+      { prop: 'name', label: '名称', minWidth: 120 },
+      { prop: 'status', label: '状态', width: 100 }, // 使用插槽
+      { prop: 'createTime', label: '创建时间', width: 180 },
+      {
+        type: 'action',
+        label: '操作',
+        width: 150,
+        buttons: [
+          { btnText: '编辑', event: 'edit', type: 'primary' },
+          { btnText: '删除', event: 'delete', type: 'danger' }
+        ]
+      }
+    ],
+    onCustomAction: (event, row) => {
+      if (event === 'edit') {
+        openDialog('edit', row)
+      }
+    }
   },
-  // 3. 表单配置
   form: {
-    // 表单初始数据
-    initialData: {
-      name: '',
-      status: 1
-    },
-    // 提交前数据处理
-    beforeSubmit: (data) => {
-      return { ...data, updateTime: Date.now() }
-    }
-  },
-  // 4. 搜索配置
-  search: {
-    initialData: { keyword: '' },
-    // 搜索参数预处理
-    beforeSearch: (params) => {
-      // 可以在这里处理特殊参数，例如将数组转为字符串
-      return params
-    }
+    initialData: { name: '', status: 1 }
   }
 })
 </script>
@@ -106,151 +153,116 @@ const {
   getTableData,
   handleSearch,
   handleReset,
-  handleExport
+  tableConfig,      // 传给 CustomTable
+  tableEventHandlers // 传给 CustomTable
 } = useTablePage(getListApi, searchForm, {
   // 配置项
   dataKey: 'rows',
   totalKey: 'count',
-  beforeSearch: (params) => {
-    // 参数处理
-    return params
-  }
-}, {
-  // 删除配置
-  deleteApi: deleteApi
-}, {
-  // 导出配置
-  exportFunction: ({ params, filename }) => {
-    // 自定义导出逻辑
+  customTableConfig: {
+    columns: [
+       // ... 列配置
+    ]
   }
 })
 ```
 
-### 3. 独立使用弹窗逻辑 (`useFormDialog`)
+### 3. 独立使用组件 (`CustomTable`)
 
-如果你只需要一个通用的表单弹窗，处理新增/编辑逻辑。
+你也可以单独使用 `CustomTable` 组件，而不依赖 Hook。
 
-```typescript
-import { useFormDialog } from 'vue3-crud-hooks'
+```vue
+<template>
+  <CustomTable
+    :config="config"
+    :data="data"
+    :loading="loading"
+    @selection-change="onSelectionChange"
+    @pagination="onPagination"
+    @action="onAction"
+  />
+</template>
 
-const {
-  dialogVisible,
-  formData,
-  openDialog,
-  submitForm
-} = useFormDialog({
-  addApi: addData,
-  updateApi: updateData,
-  initialFormData: { name: '' },
-  // 数据转换
-  dataTransform: {
-    beforeSubmit: (data) => data,
-    afterGet: (data) => data
+<script setup lang="ts">
+import { CustomTable } from 'vue3-crud-hooks'
+
+const config = {
+  selection: true,
+  index: true,
+  columns: [
+    { prop: 'name', label: 'Name' },
+    { 
+      type: 'action', 
+      buttons: [{ btnText: 'Edit', event: 'edit' }] 
+    }
+  ],
+  pagination: {
+    pageSize: 20
   }
-})
-```
-
-### 4. 统一消息提示 (`useMessage`)
-
-如果你想在 Hooks 外部使用统一的消息提示，或者自定义消息 UI。
-
-```typescript
-import { useMessage } from 'vue3-crud-hooks'
-
-// 使用默认 Element Plus 提示
-const { success, error, confirm } = useMessage()
-
-// 使用自定义 UI
-const { success } = useMessage({
-  success: (msg) => MyToast.success(msg)
-})
+}
+</script>
 ```
 
 ## 📚 核心 API
 
 ### `useCrudPage(config)`
 
-整合了 `useTablePage` 和 `useFormDialog` 的功能。
+#### 返回值更新
 
-#### 参数 (Config)
+除了原有的返回值外，新增：
 
-支持 **简化配置 (SimpleCrudConfig)** 和 **完整配置 (CrudPageConfig)**。
-
-| 属性 | 说明 | 类型 | 必填 |
-| --- | --- | --- | --- |
-| `apis` | 接口配置 (list, add, update, delete, export...) | `CrudApiConfig` | ✅ |
-| `table` | 表格配置 (dataKey, totalKey, exportUrl...) | `TableConfig` | ❌ |
-| `form` | 表单配置 (initialData, beforeSubmit, afterGet...) | `FormConfig` | ✅ |
-| `search` | 搜索配置 (initialData, beforeSearch) | `SearchConfig` | ❌ |
-| `advanced` | 高级配置 (messageApi, arrayFields, timeFields) | `AdvancedConfig` | ❌ |
-
-#### 返回值
-
-包含 `useTablePage` 和 `useFormDialog` 的所有返回值，以及 `handleDelete`, `handleExport` 等组合方法。
+| 属性 | 说明 | 类型 |
+| --- | --- | --- |
+| `tableConfig` | 生成的表格配置，直接传给 CustomTable 的 config 属性 | `ComputedRef` |
+| `tableEventHandlers` | 表格事件处理器，包含分页、选择、操作等事件处理 | `object` |
 
 ---
 
 ### `useTablePage(fetchApi, searchForm, config, deleteConfig, exportConfig)`
 
-#### 参数
-
-| 参数名 | 说明 | 类型 |
-| --- | --- | --- |
-| `fetchApi` | 获取列表数据的接口函数 | `(params: any) => Promise<any>` |
-| `searchForm` | 搜索表单的初始对象 | `object` |
-| `config` | 基础配置 | `TablePageConfig` |
-| `deleteConfig` | 删除相关配置 | `DeleteConfig` |
-| `exportConfig` | 导出相关配置 | `ExportConfig` |
-
-#### 配置项 (TablePageConfig)
-
-| 属性 | 说明 | 默认值 |
-| --- | --- | --- |
-| `dataKey` | 接口返回的数据字段名 | `'rows'` |
-| `totalKey` | 接口返回的总数字段名 | `'total'` |
-| `autoDetect` | 是否自动检测返回结构 | `true` |
-| `autoFetch` | 是否自动获取数据 | `true` |
-| `beforeSearch` | 搜索参数预处理函数 | `undefined` |
-| `exportUrl` | 导出接口 URL | `undefined` |
-
-#### 返回值
+#### 配置项 (TablePageConfig) 新增
 
 | 属性 | 说明 | 类型 |
 | --- | --- | --- |
-| `tableData` | 表格数据 | `Ref<any[]>` |
-| `loading` | 加载状态 | `Ref<boolean>` |
-| `pageInfo` | 分页信息 (pageNum, pageSize, total) | `Reactive` |
-| `getTableData` | 获取数据方法 | `Function` |
-| `handleSearch` | 搜索方法 | `Function` |
-| `handleReset` | 重置搜索方法 | `Function` |
-| `handleSelectionChange` | 表格多选处理 | `Function` |
-| `handleExport` | 导出方法 | `(options?: { url?, filename?, params? }) => void` |
+| `customTableConfig` | 用于生成 CustomTable 组件的配置 | `CustomTableConfig` |
+
+#### 返回值新增
+
+| 属性 | 说明 | 类型 |
+| --- | --- | --- |
+| `tableConfig` | CustomTable 组件配置对象 | `ComputedRef` |
+| `tableEventHandlers` | CustomTable 事件监听对象 (v-bind绑定) | `object` |
+| `setTableColumns` | 动态设置表格列配置 | `Function` |
 
 ---
 
-### `useFormDialog(config)`
+### 组件: `CustomTable`
 
-#### 参数 (Config)
+#### Props
 
-| 属性 | 说明 | 类型 |
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| `config` | 表格配置对象 | `TableConfig` | Required |
+| `data` | 表格数据 | `Array` | `[]` |
+| `loading` | 加载状态 | `Boolean` | `false` |
+| `props` | 原生 el-table 属性 (border, stripe等) | `Object` | `{}` |
+
+#### Events
+
+| 事件名 | 说明 | 参数 |
 | --- | --- | --- |
-| `addApi` | 新增接口 | `Function` |
-| `updateApi` | 编辑接口 | `Function` |
-| `initialFormData` | 表单初始数据 | `object` |
-| `dataTransform` | 数据转换配置 (beforeSubmit, afterGet) | `object` |
-| `onSuccess` | 提交成功通用回调 | `Function` |
-| `onSubmitSuccess` | 提交成功自定义回调 (可访问响应数据) | `Function` |
+| `selection-change` | 多选框状态改变 | `selection` |
+| `sort-change` | 排序改变 | `{ column, prop, order }` |
+| `filter-change` | 筛选改变 | `filters` |
+| `pagination` | 分页改变 | `{ page, limit }` |
+| `action` | 操作按钮点击 | `event, row, index` |
 
-#### 返回值
+#### Slots
 
-| 属性 | 说明 | 类型 |
-| --- | --- | --- |
-| `dialogVisible` | 弹窗显示状态 | `Ref<boolean>` |
-| `dialogMode` | 弹窗模式 ('add' \| 'edit') | `Ref<string>` |
-| `formData` | 表单数据 | `Ref<T>` |
-| `openDialog` | 打开弹窗方法 | `(mode, row?) => void` |
-| `submitForm` | 提交表单方法 | `Function` |
-| `resetForm` | 重置表单方法 | `Function` |
+- **Default Slots**: `[prop]` - 自定义列内容插槽
+- **Header Slots**: `[prop]-header` - 自定义表头插槽
+- **Action Slot**: `action` - 自定义操作列内容
+- **Append Slot**: `append` - 表格底部插槽
 
 ## 📄 License
 

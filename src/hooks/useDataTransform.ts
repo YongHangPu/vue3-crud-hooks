@@ -65,12 +65,12 @@ export const useDataTransform = () => {
         startField = fieldConfig.start
         endField = fieldConfig.end
       } else if (typeof fieldConfig === 'string') {
-        startField = `${fieldConfig}Start`
-        endField = `${fieldConfig}End`
+        startField = `begin${fieldConfig}`
+        endField = `end${fieldConfig}`
       } else {
         // 默认添加 Start/End 后缀
-        startField = `${timeField}Start`
-        endField = `${timeField}End`
+        startField = `begin${timeField}`
+        endField = `end${timeField}`
       }
 
       processed[startField] = timeValue[0]

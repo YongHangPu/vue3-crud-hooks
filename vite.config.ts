@@ -1,10 +1,28 @@
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import { resolve } from 'path'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
   plugins: [
-    // 自动生成 TypeScript 类型声明文件 (.d.ts)
+    vue(),
+    AutoImport({
+      imports: ['vue'],
+      resolvers: [ElementPlusResolver()],
+      dts: 'src/auto-imports.d.ts'
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+      dts: 'src/components.d.ts'
+    }),
     dts({
       // 指定需要生成类型的目录
       include: ['src'],
@@ -23,7 +41,10 @@ export default defineConfig({
         useTablePage: resolve(__dirname, 'src/hooks/useTablePage.ts'),
         useFormDialog: resolve(__dirname, 'src/hooks/useFormDialog.ts'),
         useCrudPage: resolve(__dirname, 'src/hooks/useCrudPage.ts'),
-        useDataTransform: resolve(__dirname, 'src/hooks/useDataTransform.ts')
+        useDataTransform: resolve(__dirname, 'src/hooks/useDataTransform.ts'),
+        useMessage: resolve(__dirname, 'src/hooks/useMessage.ts'),
+        CustomTable: resolve(__dirname, 'src/components/CustomTable.vue'),
+        Pagination: resolve(__dirname, 'src/components/Pagination.vue')
       },
       // 输出格式：ES Module 和 CommonJS
       formats: ['es', 'cjs'],
@@ -31,7 +52,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // 这些依赖应该由使用该库的项目提供
-      external: ['vue', 'element-plus', 'await-to-js'],
+      external: ['vue', /element-plus/, 'await-to-js'],
       output: {
         // 在 UMD 构建模式下为这些外部化的依赖提供一个全局变量
         globals: {
