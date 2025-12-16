@@ -1,6 +1,6 @@
 {
   "name": "vue3-crud-hooks",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "基于 Vue 3 和 Element Plus 的 CRUD 工具库",
   "type": "module",
   "author": "YongHangPu",

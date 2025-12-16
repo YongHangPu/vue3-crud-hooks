@@ -1,5 +1,5 @@
 <template>
-  <div class="custom-table-container">
+  <div class="custom-table-container" v-bind="$attrs">
     <el-table
       ref="tableRef"
       v-bind="tableProps"
@@ -11,10 +11,10 @@
       style="width: auto; min-width: 100%;"
     >
       <!-- 选择列 -->
-      <el-table-column v-if="config.selection" type="selection" v-bind="typeof config.selection === 'object' ? config.selection : {}" />
+      <el-table-column v-if="config?.selection" type="selection" v-bind="typeof config.selection === 'object' ? config.selection : {}" />
 
       <!-- 索引列 -->
-      <el-table-column v-if="config.index" type="index" v-bind="typeof config.index === 'object' ? config.index : {}" />
+      <el-table-column v-if="config?.index" type="index" label="序号" v-bind="typeof config.index === 'object' ? config.index : {}" />
 
       <!-- 数据列 -->
       <template v-for="(column, index) in processedColumns" :key="index">
@@ -99,6 +99,8 @@
 
 <script setup lang="ts">
 import { ref, computed, useSlots } from 'vue'
+import { ElTable, ElTableColumn, ElLink, ElButton } from 'element-plus'
+import Pagination from './Pagination.vue'
 import type { TableProps } from 'element-plus'
 import type { TableColumnCtx } from 'element-plus/es/components/table/src/table-column/defaults'
 import type { } from 'lodash-unified' // 解决 Element Plus 类型推断导致的构建错误 (TS2742)
@@ -154,6 +156,7 @@ interface PaginationConfig {
   total?: number
   pageSize?: number
   currentPage?: number
+  autoScroll?: boolean
   [key: string]: any
 }
 
@@ -180,18 +183,33 @@ interface TableConfig {
  * @property data 表格数据
  * @property props 表格属性
  * @property loading 加载状态
+ * @property suffixName vitepress-demo-preview 注入的属性
+ * @property absolutePath vitepress-demo-preview 注入的属性
+ * @property relativePath vitepress-demo-preview 注入的属性
  */
 interface Props {
-  config: TableConfig
+  config: TableConfig | null
   data: any[]
   props?: Partial<TableProps<any>>
   loading?: boolean
+  suffixName?: string
+  absolutePath?: string
+  relativePath?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  config: () => ({ columns: [] }),
   data: () => [],
   props: () => ({}),
-  loading: false
+  loading: false,
+  suffixName: '',
+  absolutePath: '',
+  relativePath: ''
+})
+
+// 允许属性继承，避免警告
+defineOptions({
+  inheritAttrs: true
 })
 
 // 插槽
@@ -215,7 +233,7 @@ const tableData = computed(() => props.data)
  * @returns 处理后的列配置数组
  */
 const processedColumns = computed<ColumnConfig[]>(() => {
-  return props.config.columns.map((column) => {
+  return (props.config?.columns || []).map((column) => {
     const hasWidth = column.width || column.minWidth
     return {
       type: 'default',
@@ -230,7 +248,7 @@ const processedColumns = computed<ColumnConfig[]>(() => {
  * @returns 分页组件属性
  */
 const paginationProps = computed(() => {
-  if (typeof props.config.pagination === 'boolean') {
+  if (!props.config || typeof props.config.pagination === 'boolean') {
     return {
       total: 0,
       page: 1,
@@ -253,7 +271,7 @@ const paginationProps = computed(() => {
  */
 const shouldShowPagination = computed(() => {
   // 如果没有配置分页或分页为false，不显示
-  if (props.config.pagination === false || !props.config.pagination) {
+  if (!props.config || props.config.pagination === false || !props.config.pagination) {
     return false
   }
 

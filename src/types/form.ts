@@ -30,7 +30,7 @@ export interface FormDialogConfig<T = any> {
   /** 更新数据的API函数 */
   updateApi: (data: T) => Promise<any>
   /** 获取单条数据的API函数（可选，编辑时使用） */
-  getApi?: (id: string | number) => Promise<any>
+  getApi?: (id: any) => Promise<any>
   /** 表单验证规则（可选） */
   formRules?: any
   /** 提交成功后的通用回调（可选，通常用于刷新列表） */

@@ -1,9 +1,6 @@
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import { resolve } from 'path'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
@@ -14,15 +11,6 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    AutoImport({
-      imports: ['vue'],
-      resolvers: [ElementPlusResolver()],
-      dts: 'src/auto-imports.d.ts'
-    }),
-    Components({
-      resolvers: [ElementPlusResolver()],
-      dts: 'src/components.d.ts'
-    }),
     dts({
       // 指定需要生成类型的目录
       include: ['src'],
@@ -34,6 +22,7 @@ export default defineConfig({
   ],
   build: {
     // 库模式构建配置
+    minify: false,
     lib: {
       // 入口文件
       entry: {

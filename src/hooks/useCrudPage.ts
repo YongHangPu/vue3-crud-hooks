@@ -37,6 +37,7 @@ function convertToFullConfig<T>(simpleConfig: SimpleCrudConfig<T>): CrudPageConf
     customTableConfig: table.config,
     dataKey: table.dataKey,
     totalKey: table.totalKey,
+    autoFetch: table.autoFetch,
     beforeSearch: search?.beforeSearch,
 
     // 搜索配置

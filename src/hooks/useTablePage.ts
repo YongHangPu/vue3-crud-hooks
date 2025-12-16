@@ -30,7 +30,10 @@ export const useTablePage = <T = any>(
   }
 
   // 默认删除配置
-  const defaultDeleteConfig: Required<DeleteConfig> = {
+  const defaultDeleteConfig: Required<Omit<DeleteConfig, 'onDeleteSuccess' | 'onBatchDeleteSuccess'>> & {
+    onDeleteSuccess?: (row: any) => void
+    onBatchDeleteSuccess?: (rows: any[], isDeleteAll: boolean) => void
+  } = {
     deleteApi: async () => {
       throw new Error('删除接口未配置')
     },
@@ -44,12 +47,21 @@ export const useTablePage = <T = any>(
     confirmMessage: '确定要删除当前数据吗？',
     batchConfirmMessage: '确定要删除选中的数据吗？',
     deleteAllConfirmMessage: '确定要删除全部数据吗？',
-    onDeleteSuccess: () => {}, // 默认空函数
-    onBatchDeleteSuccess: () => {} // 默认空函数
+    onDeleteSuccess: undefined,
+    onBatchDeleteSuccess: undefined
   }
 
   // 合并配置
-  const finalConfig = { ...defaultConfig, ...config }
+  // 过滤掉 config 中为 undefined 的属性，以免覆盖默认值
+  const validConfig = Object.keys(config).reduce((acc, key) => {
+    const value = config[key as keyof TablePageConfig]
+    if (value !== undefined) {
+      acc[key] = value
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  const finalConfig: TablePageConfig & typeof defaultConfig = { ...defaultConfig, ...validConfig }
   const finalDeleteConfig = { ...defaultDeleteConfig, ...deleteConfig }
 
   // 默认导出配置
@@ -74,10 +86,27 @@ export const useTablePage = <T = any>(
   const loading = ref(false)
   // 删除操作加载状态
   const deleteLoading = ref(false)
+  // 获取初始分页配置
+  const getInitialPagination = () => {
+    const paginationConfig = finalConfig.customTableConfig?.pagination
+    if (typeof paginationConfig === 'object') {
+      return {
+        pageNum: paginationConfig.currentPage || 1,
+        pageSize: paginationConfig.pageSize || 10
+      }
+    }
+    return {
+      pageNum: 1,
+      pageSize: 10
+    }
+  }
+
+  const initialPagination = getInitialPagination()
+
   // 分页信息
   const pageInfo = reactive({
-    pageNum: 1, // 当前页码
-    pageSize: 10, // 每页条数
+    pageNum: initialPagination.pageNum, // 当前页码
+    pageSize: initialPagination.pageSize, // 每页条数
     total: 0 // 总条数
   })
   // 搜索条件
@@ -497,7 +526,8 @@ export const useTablePage = <T = any>(
     deleteLoading, // 删除操作加载状态
     pageInfo, // 分页信息
     searchParams, // 搜索参数
-    selectedRows, // 选中的数据行
+    selection: selectedRows, // 选中的数据行
+    selectedRows, // 选中的数据行（保留原有命名）
     selectedIds, // 选中的ID列表
 
     // 基础方法

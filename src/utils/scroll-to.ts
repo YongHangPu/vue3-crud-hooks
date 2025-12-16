@@ -9,6 +9,9 @@ const easeInOutQuad = (t: number, b: number, c: number, d: number) => {
 
 // requestAnimationFrame for Smart Animating http://goo.gl/sx5sts
 const requestAnimFrame = (function () {
+  if (typeof window === 'undefined') {
+    return (callback: FrameRequestCallback) => setTimeout(callback, 1000 / 60) as unknown as number
+  }
   return (
     window.requestAnimationFrame ||
     (window as any).webkitRequestAnimationFrame ||
@@ -24,12 +27,14 @@ const requestAnimFrame = (function () {
  * @param {number} amount
  */
 const move = (amount: number) => {
+  if (typeof document === 'undefined') return
   document.documentElement.scrollTop = amount;
   (document.body.parentNode as HTMLElement).scrollTop = amount;
   document.body.scrollTop = amount;
 };
 
 const position = () => {
+  if (typeof document === 'undefined') return 0
   return document.documentElement.scrollTop || (document.body.parentNode as HTMLElement).scrollTop || document.body.scrollTop;
 };
 

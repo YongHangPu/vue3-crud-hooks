@@ -46,21 +46,33 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     dialogMode.value = mode
     dialogVisible.value = true
 
-    // 编辑模式且配置了获取API时，获取详细数据
-    if (mode === 'edit' && config.getApi) {
-      formLoading.value = true
-      try {
-        const id = row?.id !== undefined ? row.id : row
-        const [err, res] = await to(config.getApi(id))
-        if (!err) {
-          // 如果配置了数据转换函数，先执行转换
-          const data = config.dataTransform?.afterGet ? config.dataTransform.afterGet(res.data) : res.data
-          formData.value = deepClone(data)
-        } else {
-          showMessage.error(`获取数据失败: ${err}`)
+    // 编辑模式处理
+    if (mode === 'edit') {
+      if (config.getApi) {
+        // 配置了获取API时，通过API获取详细数据
+        formLoading.value = true
+        try {
+          const id = row?.id !== undefined ? row.id : row
+          const [err, res] = await to(config.getApi(id))
+          if (!err) {
+            // 如果配置了数据转换函数，先执行转换
+            const data = config.dataTransform?.afterGet ? config.dataTransform.afterGet(res.data) : res.data
+            formData.value = deepClone(data)
+          } else {
+            showMessage.error(`获取数据失败: ${err}`)
+          }
+        } finally {
+          formLoading.value = false
         }
-      } finally {
-        formLoading.value = false
+      } else if (row) {
+        // 未配置获取API但有行数据时，直接使用行数据回显
+        // 合并 initialFormData 和 row，确保字段完整性
+        formData.value = { ...deepClone(config.initialFormData), ...deepClone(row) }
+        
+        // 清除可能的验证残留
+        nextTick(() => {
+          formRef.value?.clearValidate()
+        })
       }
     }
   }

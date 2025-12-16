@@ -8,6 +8,7 @@ import type { Ref, ComputedRef } from 'vue'
 export interface PaginationConfig {
   total?: number
   pageSize?: number
+  autoScroll?: boolean
   [key: string]: any
 }
 
@@ -81,6 +82,9 @@ export interface TablePageHook<T = any> {
     total: number
   }
   searchParams: Record<string, any>
+  /** 选中的数据行 */
+  selection: Ref<T[]>
+  /** 选中的数据行（同 selection） */
   selectedRows: Ref<T[]>
   selectedIds: ComputedRef<any[]>
   getTableData: () => Promise<void>
@@ -126,9 +130,9 @@ export interface TablePageConfig {
 
 export interface DeleteConfig {
   /** 删除数据的API函数 */
-  deleteApi?: (id: string | number) => Promise<any>
+  deleteApi?: (id: any) => Promise<any>
   /** 批量删除数据的API函数 */
-  batchDeleteApi?: (ids: (string | number)[]) => Promise<any>
+  batchDeleteApi?: (ids: any[]) => Promise<any>
   /** 删除所有数据的API函数 */
   deleteAllApi?: () => Promise<any>
   /** 数据主键字段名，默认为 'id' */

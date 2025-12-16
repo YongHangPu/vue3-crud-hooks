@@ -43,9 +43,9 @@ export interface SimpleCrudConfig<T = any> {
     list: (params: any) => Promise<any>
     add: (data: T) => Promise<any>
     update: (data: T) => Promise<any>
-    delete?: (id: string | number) => Promise<any>
-    batchDelete?: (ids: (string | number)[]) => Promise<any>
-    get?: (id: string | number) => Promise<any>
+    delete?: (id: any) => Promise<any>
+    batchDelete?: (ids: any[]) => Promise<any>
+    get?: (id: any) => Promise<any>
     export?: (params: any) => Promise<any>
   }
   /** 表单配置 */
@@ -69,6 +69,8 @@ export interface SimpleCrudConfig<T = any> {
     dataKey?: string
     /** 响应数据中的总数字段名 */
     totalKey?: string
+    /** 是否自动获取数据，默认为 true */
+    autoFetch?: boolean
     /** 导出 URL */
     exportUrl?: string
     /** 自定义事件处理器 */

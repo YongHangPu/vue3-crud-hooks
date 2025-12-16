@@ -8,13 +8,10 @@ hero:
   actions:
     - theme: brand
       text: 快速开始
-      link: /guide/getting-started
+      link: /hooks/use-crud-page
     - theme: alt
-      text: API 参考
-      link: /reference/use-table-page
-    - theme: alt
-      text: 综合 CRUD
-      link: /reference/use-crud-page
+      text: GitHub
+      link: https://github.com/your-repo/vue3-crud-hooks
 
 features:
   - title: 列表页（useTablePage）
@@ -39,12 +36,3 @@ features:
 - 提效：列表/弹窗/导出等通用场景开箱即用，减少重复编码
 - 规范：统一数据结构与交互流程，降低团队协作摩擦
 - 可维护：核心逻辑集中在 Hooks，扩展与重构成本小
-
-## 与其他方式对比
-
-- 传统手写页面
-  - 每个页面都重复实现分页、搜索、删除等逻辑
-  - 代码分散在多个组件中，复用难、维护成本高
-- 本方案（Vue3 CRUD Hooks）
-  - 通用逻辑封装在 Hooks，页面只关心配置与展示
-  - 文档内置预览与示例，可直接复制与改造
