@@ -8,7 +8,7 @@
       @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
       @filter-change="handleFilterChange"
-      style="width: auto; min-width: 100%;"
+      style="width: 100%;"
     >
       <!-- 选择列 -->
       <el-table-column v-if="config?.selection" type="selection" v-bind="typeof config.selection === 'object' ? config.selection : {}" />
@@ -220,9 +220,10 @@ const tableRef = ref<any>(null)
 
 // 表格属性
 const tableProps = computed(() => ({
-  ...props.props,
-  border: props.props?.border !== undefined ? props.props.border : true,
-  stripe: props.props?.stripe !== undefined ? props.props.stripe : false
+  ...(props.config?.props || {}), // 从配置中读取 props
+  ...props.props, // 外部传入的 props 优先级更高
+  border: props.props?.border !== undefined ? props.props.border : (props.config?.props?.border !== undefined ? props.config.props.border : true),
+  stripe: props.props?.stripe !== undefined ? props.props.stripe : (props.config?.props?.stripe !== undefined ? props.config.props.stripe : false)
 }))
 
 // 表格数据
@@ -428,7 +429,6 @@ defineExpose({
 <style scoped>
 .custom-table-container {
   position: relative;
-  min-width: 1000px;
 }
 
 .custom-table-container :deep(.pagination-container) {

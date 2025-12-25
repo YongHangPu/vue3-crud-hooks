@@ -78,6 +78,19 @@ demo-preview=@examples/use-crud-page/basic.vue
 | index | 是否显示索引列(序号)，支持对象配置属性 | `boolean \| { label?: string; [key: string]: any }` |
 | columns | 列配置数组 | `TableColumnConfig[]` |
 | pagination | 分页配置，设为 false 可隐藏分页 | `boolean \| PaginationConfig` |
+| props | 透传给 el-table 的属性 (如 border, stripe, height, rowKey 等) | `Record<string, any>` |
+
+#### PaginationConfig 分页配置
+
+| 属性 | 说明 | 类型 | 默认值 |
+| --- | --- | --- | --- |
+| pageSize | 每页条数 | `number` | `10` |
+| pageSizes | 每页条数选项 | `number[]` | `[10, 20, 30, 50]` |
+| layout | 分页组件布局 | `string` | `'total, sizes, prev, pager, next, jumper'` |
+| background | 是否带有背景色 | `boolean` | `true` |
+| autoScroll | 翻页后是否自动滚动到顶部 | `boolean` | `false` |
+| pagerCount | 页码按钮的数量 | `number` | `7` |
+| float | 分页组件浮动方向 | `'right' \| 'left'` | `'right'` |
 
 ### 高级用法
 

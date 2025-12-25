@@ -30,9 +30,6 @@ interface Props {
   autoScroll?: boolean;
   hidden?: boolean;
   float?: string;
-  suffixName?: string;
-  absolutePath?: string;
-  relativePath?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -47,9 +44,6 @@ const props = withDefaults(defineProps<Props>(), {
   autoScroll: false,
   hidden: false,
   float: 'right',
-  suffixName: '',
-  absolutePath: '',
-  relativePath: ''
 });
 
 // 允许属性继承，避免警告

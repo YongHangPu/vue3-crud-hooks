@@ -8,7 +8,13 @@ import type { Ref, ComputedRef } from 'vue'
 export interface PaginationConfig {
   total?: number
   pageSize?: number
+  currentPage?: number
   autoScroll?: boolean
+  pageSizes?: number[]
+  layout?: string
+  background?: boolean
+  pagerCount?: number
+  float?: string
   [key: string]: any
 }
 
@@ -69,6 +75,8 @@ export interface CustomTableConfig {
   columns: Array<TableColumnConfig>
   pagination?: boolean | PaginationConfig
   onCustomAction?: (event: string, row: any, index: number) => void
+  /** 透传给 el-table 的属性 */
+  props?: Record<string, any>
   [key: string]: any
 }
 
