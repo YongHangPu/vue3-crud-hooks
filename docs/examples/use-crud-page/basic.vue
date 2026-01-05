@@ -181,19 +181,21 @@ const {
   submitForm
 } = useCrudPage({
   // 简化配置模式
+  // 1. 接口配置
   apis: {
-    list: api.getList,
-    add: api.add,
-    update: api.update,
-    delete: api.delete,
-    batchDelete: api.batchDelete
+    list: api.getList,        // 列表接口
+    add: api.add,             // 新增接口
+    update: api.update,       // 更新接口
+    delete: api.delete,       // 删除接口
+    batchDelete: api.batchDelete // 批量删除接口
   },
+  // 2. 表格配置
   table: {
-    dataKey: 'rows',
-    totalKey: 'total',
+    dataKey: 'rows',          // 列表数据字段名
+    totalKey: 'total',        // 总数字段名
     config: {
-      selection: true,
-      index: { width: 60, align: 'center' },
+      selection: true,        // 开启多选
+      index: { width: 60, align: 'center', label: '#' }, // 序号列配置
       columns: [
         { prop: 'id', label: 'ID', width: 80 },
         { prop: 'name', label: '名称' },
@@ -204,29 +206,36 @@ const {
           formatter: (row: any) => (row.status === 1 ? '启用' : '禁用')
         },
         { prop: 'createTime', label: '创建时间', width: 180 },
-        { prop: 'action', label: '操作', width: 150, slotName: 'action' }
+        { prop: 'action', label: '操作', width: 150, slotName: 'action' } // 操作列使用插槽
       ]
     }
   },
+  // 3. 表单配置
   form: {
+    // 弹窗表单初始数据
     initialData: {
       name: '',
       status: 1
     },
-    rules
+    rules // 表单校验规则
   },
+  // 4. 搜索配置
   search: {
+    // 搜索表单初始数据
     initialData: {
       keyword: ''
     }
   },
+  // 5. 高级配置
   advanced: {
     callbacks: {
+      // 删除成功后的回调
       onDeleteSuccess: () => {
-        handleSearch()
+        handleSearch() // 刷新列表
       },
+      // 批量删除成功后的回调
       onBatchDeleteSuccess: () => {
-        handleSearch()
+        handleSearch() // 刷新列表
       }
     }
   }

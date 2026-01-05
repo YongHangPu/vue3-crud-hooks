@@ -53,7 +53,7 @@
       <!-- 自定义标签列 -->
       <template #tags="{ row }">
         <el-tag
-          v-for="tag in row.tags"
+          v-for="tag in (row.tags ? row.tags.split(',') : [])"
           :key="tag"
           size="small"
           style="margin-right: 5px"
@@ -132,7 +132,8 @@ let mockData = Array.from({ length: 20 }).map((_, index) => ({
   id: index + 1,
   name: `User ${index + 1}`,
   status: index % 2,
-  tags: ['Vue', 'React'].slice(0, (index % 2) + 1),
+  // 模拟后端存储为字符串
+  tags: ['Vue', 'React'].slice(0, (index % 2) + 1).join(','),
   createTime: '2025-01-01'
 }))
 
@@ -153,7 +154,7 @@ const api = {
            // 简单模拟日期过滤
            list = list.filter(item => item.createTime >= startTime && item.createTime <= endTime)
         }
-        
+
         const start = (pageNum - 1) * pageSize
         const end = start + pageSize
         resolve({
@@ -166,6 +167,8 @@ const api = {
   add: (data: any) => {
     return new Promise((resolve) => {
       setTimeout(() => {
+        // data.tags 已经被 arrayFields 自动转换为字符串了
+        console.log('提交的数据:', data)
         mockData.unshift({
           id: mockData.length + 1,
           ...data,
@@ -243,53 +246,69 @@ const {
   submitForm
 } = useCrudPage({
   // 简化配置模式
+  // 1. 接口配置
   apis: {
-    list: api.getList,
-    add: api.add,
-    update: api.update,
-    delete: api.delete,
-    batchDelete: api.batchDelete,
-    export: api.export
+    list: api.getList,        // 列表接口
+    add: api.add,             // 新增接口
+    update: api.update,       // 更新接口
+    delete: api.delete,       // 删除接口
+    batchDelete: api.batchDelete, // 批量删除接口
+    export: api.export        // 导出接口
   },
+  // 2. 表格配置
   table: {
-    // 自动获取数据
+    // 挂载时自动获取数据 (默认 true)
     autoFetch: true,
     config: {
-      selection: true, // 开启选择列
-      index: { label: '序号', width: 60, align: 'center' }, // 自定义索引列
+      selection: true,        // 开启多选
+      index: { label: '序号', width: 60, align: 'center' }, // 序号列配置
       columns: [
         { prop: 'name', label: '名称', minWidth: 120 },
-        { prop: 'status', label: '状态', width: 100, slotName: 'status' }, // 使用自定义插槽
-        { prop: 'tags', label: '标签', minWidth: 200, slotName: 'tags' }, // 使用自定义插槽
+        { prop: 'status', label: '状态', width: 100, slotName: 'status' }, // 自定义状态列插槽
+        { prop: 'tags', label: '标签', minWidth: 200, slotName: 'tags' },   // 自定义标签列插槽
         { prop: 'createTime', label: '创建时间', width: 180 },
-        { prop: 'action', label: '操作', width: 150, slotName: 'action', fixed: 'right' }
+        { prop: 'action', label: '操作', width: 150, slotName: 'action', fixed: 'right' } // 固定操作列
       ]
     }
   },
+  // 3. 表单配置
   form: {
+    // 弹窗表单初始数据
     initialData: {
       name: '',
       status: 1,
-      tags: []
+      tags: [] // 初始为空数组
     },
     rules
   },
+  // 4. 搜索配置
   search: {
+    // 搜索表单初始数据
     initialData: {
       keyword: '',
       status: undefined,
-      createTime: []
+      createTime: [] // 时间范围数组
     }
   },
+  // 5. 高级配置 (核心功能)
   advanced: {
-    // 自动处理时间范围字段：将 createTime 数组拆分为 startTime 和 endTime
-    timeFields: [{ field: 'createTime', prefix: { start: 'startTime', end: 'endTime' } }],
+    // 自动处理数组字段转换
+    // 前端使用数组 ['Vue', 'React'] <-> 后端存储字符串 "Vue,React"
+    arrayFields: ['tags'],
+
+    // 自动处理时间范围字段拆分
+    // 前端搜索/表单使用数组 [start, end] <-> 后端接收 { startTime, endTime }
+    timeFields: [
+      { field: 'createTime', prefix: { start: 'startTime', end: 'endTime' } }
+    ],
+
+    // 操作回调
     callbacks: {
       onDeleteSuccess: () => {
-        handleSearch()
+        handleSearch() // 删除后刷新
       },
       onBatchDeleteSuccess: () => {
-        handleSearch()
+        handleSearch() // 批量删除后刷新
       }
     }
   }
