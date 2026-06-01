@@ -4,6 +4,7 @@
   "description": "基于 Vue 3 和 Element Plus 的 CRUD 工具库",
   "type": "module",
   "author": "YongHangPu",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/YongHangPu/vue3-crud-hooks.git"
