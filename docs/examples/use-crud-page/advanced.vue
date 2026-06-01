@@ -36,7 +36,7 @@
 
     <!-- 表格区域 -->
     <CustomTable
-      :config="cusTableConfig"
+      :config="tableConfig"
       :data="tableData"
       :loading="loading"
       @selection-change="tableEventHandlers.onSelectionChange"
@@ -225,7 +225,7 @@ const rules = {
 
 // 使用 useCrudPage
 const {
-  cusTableConfig,
+  tableConfig,
   tableData,
   loading,
   selection,

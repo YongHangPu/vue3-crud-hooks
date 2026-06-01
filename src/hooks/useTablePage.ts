@@ -21,6 +21,47 @@ export const useTablePage = <T = any>(
   deleteConfig: DeleteConfig = {},
   exportConfig: ExportConfig = {}
 ): TablePageHook<T> => {
+  const createDefaultExportFunction = (baseUrl: string) => {
+    return ({ url, params, filename }: { url?: string; params: any; filename: string }) => {
+      const exportUrl = url || baseUrl
+      if (!exportUrl) {
+        showMessage.warning('导出地址未配置')
+        return
+      }
+
+      if (typeof window === 'undefined') {
+        console.warn('当前环境不支持浏览器导出行为')
+        return
+      }
+
+      const search = new URLSearchParams()
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') {
+          return
+        }
+
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            search.append(key, String(item))
+          })
+          return
+        }
+
+        search.append(key, String(value))
+      })
+
+      const downloadUrl = search.toString() ? `${exportUrl}${exportUrl.includes('?') ? '&' : '?'}${search.toString()}` : exportUrl
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = filename
+      link.target = '_blank'
+      link.rel = 'noopener'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
   const defaultConfig: Required<Pick<TablePageConfig, 'dataKey' | 'totalKey' | 'autoDetect' | 'autoFetch' | 'beforeSearch'>> = {
     dataKey: 'rows',
     totalKey: 'total',
@@ -61,8 +102,24 @@ export const useTablePage = <T = any>(
     return acc
   }, {} as Record<string, any>)
 
+  const validDeleteConfig = Object.keys(deleteConfig).reduce((acc, key) => {
+    const value = deleteConfig[key as keyof DeleteConfig]
+    if (value !== undefined) {
+      acc[key] = value
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  const validExportConfig = Object.keys(exportConfig).reduce((acc, key) => {
+    const value = exportConfig[key as keyof ExportConfig]
+    if (value !== undefined) {
+      acc[key] = value
+    }
+    return acc
+  }, {} as Record<string, any>)
+
   const finalConfig: TablePageConfig & typeof defaultConfig = { ...defaultConfig, ...validConfig }
-  const finalDeleteConfig = { ...defaultDeleteConfig, ...deleteConfig }
+  const finalDeleteConfig = { ...defaultDeleteConfig, ...validDeleteConfig }
 
   // 默认导出配置
   const defaultExportConfig: ExportConfig = {
@@ -72,13 +129,17 @@ export const useTablePage = <T = any>(
   }
 
   // 合并导出配置
-  const finalExportConfig = { ...defaultExportConfig, ...exportConfig }
+  const finalExportConfig = { ...defaultExportConfig, ...validExportConfig }
 
   // 初始化数据转换工具
   const { processTimeRange, arrayToString } = useDataTransform()
 
   // 消息提示封装
   const showMessage = useMessage(config.messageApi)
+
+  if (!finalExportConfig.exportFunction && config.exportUrl) {
+    finalExportConfig.exportFunction = createDefaultExportFunction(config.exportUrl)
+  }
 
   // 表格数据
   const tableData = ref<any[]>([])
@@ -210,7 +271,10 @@ export const useTablePage = <T = any>(
 
       const [error, result] = await to(fetchData(requestParams))
       if (error) {
-        return console.error('获取表格数据失败:', error)
+        tableData.value = []
+        pageInfo.total = 0
+        showMessage.error(`获取表格数据失败: ${error instanceof Error ? error.message : String(error)}`)
+        return
       }
 
       const { data, total } = parseResult(result)
@@ -219,6 +283,7 @@ export const useTablePage = <T = any>(
     } catch (error) {
       tableData.value = []
       pageInfo.total = 0
+      showMessage.error(`获取表格数据失败: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       loading.value = false
     }
@@ -297,7 +362,8 @@ export const useTablePage = <T = any>(
     try {
       const [error, res] = await to(finalDeleteConfig.deleteApi(id))
       if (error) {
-        return console.error('删除失败:', error)
+        showMessage.error(`删除失败: ${error instanceof Error ? error.message : String(error)}`)
+        return
       }
 
       showMessage.success(res.msg || '删除成功')
@@ -345,7 +411,7 @@ export const useTablePage = <T = any>(
 
       const [error, res] = await to(api)
       if (error) {
-        console.error(deleteAll ? '删除所有数据失败:' : '批量删除失败:', error)
+        showMessage.error(`${deleteAll ? '删除所有数据失败' : '批量删除失败'}: ${error instanceof Error ? error.message : String(error)}`)
       } else {
         showMessage.success(res.msg)
 
@@ -476,7 +542,6 @@ export const useTablePage = <T = any>(
    */
   const handleExport = (options: { url?: string; filename?: string; params?: any } = {}) => {
     if (!finalExportConfig.exportFunction) {
-      console.error('未配置 exportFunction，无法执行导出')
       showMessage.warning('导出功能未配置')
       return
     }

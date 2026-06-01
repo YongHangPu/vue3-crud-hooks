@@ -77,7 +77,7 @@ Hook 返回的对象包含以下属性和方法：
 *   **编辑模式 (`mode='edit'`)**:
     *   设置 `dialogMode` 为 `'edit'`。
     *   **情况 1：配置了 `getApi`**
-        *   从 `row` 中获取 `id`（支持 `row.id` 或 `row` 本身即为 ID）。
+        *   从 `row` 中根据 `idKey` 获取主键（默认读取 `row.id`，也支持直接传入主键值）。
         *   设置 `formLoading` 为 true。
         *   调用 `getApi(id)`。
         *   调用 `afterGet` 转换数据（如有）。

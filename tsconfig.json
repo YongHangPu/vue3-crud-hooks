@@ -18,6 +18,6 @@
     },
     "types": ["node", "lodash-unified"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "docs/**/*.md", "docs/**/*.ts", "docs/**/*.mts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "docs/**/*.md", "docs/**/*.ts", "docs/**/*.mts", "tests/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

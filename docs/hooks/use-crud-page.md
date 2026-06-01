@@ -10,9 +10,9 @@
 demo-preview=@examples/use-crud-page/basic.vue
 :::
 
-## 简化配置模式 (SimpleCrudConfig)
+## 配置模式
 
-`useCrudPage` 推荐使用简化配置模式，它将配置分为五个核心部分：`apis`、`table`、`form`、`search` 和 `advanced`。
+`useCrudPage` 仅保留一套分层配置写法，配置固定分为五个核心部分：`apis`、`table`、`form`、`search` 和 `advanced`。
 
 ### 1. apis - 接口配置
 
@@ -41,7 +41,7 @@ const { ... } = useCrudPage({
     get: (id) => request.get(`/api/detail/${id}`),
 
     // 导出 (可选)
-    export: (params) => request.download('/api/export', params)
+    export: ({ params }) => request.download('/api/export', params)
   },
   // ...
 })
@@ -182,7 +182,7 @@ const { ... } = useCrudPage({
 })
 ```
 
-### 综合配置示例 (SimpleCrudConfig)
+### 综合配置示例
 
 以下是一个包含所有配置项的简化配置示例：
 
@@ -215,7 +215,7 @@ const {
   submitForm,      // 提交表单
 
   // 5. 绑定到组件的属性 (通常直接透传)
-  cusTableConfig,     // 计算后的表格配置，绑定到 <CustomTable :config="cusTableConfig">
+  tableConfig,        // 计算后的表格配置，绑定到 <CustomTable :config="tableConfig">
   tableEventHandlers, // 表格事件处理，绑定到 <CustomTable v-on="tableEventHandlers">
   handleDialogClose   // 弹窗关闭事件，绑定到 <el-dialog @close="handleDialogClose">
 } = useCrudPage({
@@ -280,185 +280,6 @@ const {
 demo-preview=@examples/use-crud-page/advanced.vue
 :::
 
-## 完整配置模式 (CrudPageConfig)
-
-如果你需要更精细的控制，可以使用完整配置模式。此模式下，参数将直接透传给底层的 `useTablePage` 和 `useFormDialog`。
-
-`CrudPageConfig` 继承自 `FormDialogConfig`, `TablePageConfig`, `DeleteConfig` 和 `ExportConfig`。
-
-### 1. 基础 API 配置
-
-```typescript
-const { ... } = useCrudPage({
-  // 获取列表数据的 API (必填)
-  listApi: (params) => request.get('/list', { params }),
-
-  // 新增数据的 API (必填)
-  addApi: (data) => request.post('/add', data),
-
-  // 更新数据的 API (必填)
-  updateApi: (data) => request.put('/update', data),
-
-  // 获取详情的 API (可选)
-  getApi: (id) => request.get(`/detail/${id}`),
-
-  // 删除数据的 API (可选)
-  deleteApi: (id) => request.delete(`/delete/${id}`),
-
-  // 批量删除数据的 API (可选)
-  batchDeleteApi: (ids) => request.post('/batch-delete', { ids }),
-
-  // 导出 URL (可选)
-  exportUrl: '/api/export'
-})
-```
-
-### 2. 表单配置 (FormDialogConfig)
-
-```typescript
-const { ... } = useCrudPage({
-  // 表单初始数据 (必填)
-  initialFormData: { name: '', age: 0 },
-
-  // 表单校验规则 (可选)
-  formRules: { name: [{ required: true, message: 'Required' }] },
-
-  // 数据转换 (可选)
-  dataTransform: {
-    // 提交前转换：T -> any
-    beforeSubmit: (data) => ({ ...data, status: 1 }),
-    // 获取后转换：any -> T
-    afterGet: (data) => ({ ...data, tags: data.tags.split(',') })
-  },
-
-  // 提交成功回调 (可选)
-  onSuccess: () => { console.log('Refresh list') },
-
-  // 自定义提交成功处理 (可选)
-  onSubmitSuccess: (res, mode, formData) => { ... }
-})
-```
-
-### 3. 表格配置 (TablePageConfig)
-
-```typescript
-const { ... } = useCrudPage({
-  // CustomTable 组件配置 (可选)
-  customTableConfig: {
-    columns: [...],
-    selection: true,
-    pagination: { pageSize: 20 }
-  },
-
-  // 响应数据字段映射 (可选)
-  dataKey: 'data.list', // 默认为 'rows'
-  totalKey: 'data.total', // 默认为 'total'
-
-  // 是否自动获取数据 (可选)
-  autoFetch: false, // 默认为 true
-
-  // 搜索参数预处理 (可选)
-  beforeSearch: (params) => ({ ...params, type: 1 })
-})
-```
-
-### 4. 其他配置
-
-```typescript
-const { ... } = useCrudPage({
-  // 删除确认提示文字 (可选)
-  confirmMessage: '确定要删除该项吗？',
-
-  // 批量删除确认提示文字 (可选)
-  batchConfirmMessage: '确定要删除选中项吗？',
-
-  // 数据主键字段名 (可选)
-  idKey: 'uuid', // 默认为 'id'
-
-  // 数组字段 (用于自动转换和导出)
-  arrayFields: ['tags'],
-
-  // 时间字段 (用于自动拆分和导出)
-  timeFields: [{ field: 'date', prefix: 'create' }]
-})
-```
-
-### 综合配置示例 (CrudPageConfig)
-
-以下是一个包含所有配置项的完整配置示例：
-
-```typescript
-const {
-  // 1. 表格相关状态
-  tableData,       // 表格列表数据
-  total,           // 数据总条数
-  loading,         // 表格加载 loading
-  pageInfo,        // 分页信息 { pageNum, pageSize }
-  selection,       // 当前选中的行数组
-
-  // 2. 表单相关状态
-  dialogVisible,   // 弹窗显示状态
-  dialogMode,      // 弹窗模式：'add' | 'edit' | 'view'
-  formData,        // 表单数据对象
-  submitLoading,   // 提交按钮 loading
-
-  // 3. 搜索相关状态
-  searchParams,    // 搜索表单数据
-
-  // 4. 操作方法
-  getTableData,    // 手动刷新列表
-  handleSearch,    // 触发搜索 (重置页码为1)
-  handleReset,     // 重置搜索条件
-  openDialog,      // 打开弹窗：openDialog('add') 或 openDialog('edit', row)
-  handleDelete,    // 处理单条删除：handleDelete(row)
-  handleBatchDelete, // 处理批量删除
-  handleExport,    // 触发导出
-  submitForm,      // 提交表单
-
-  // 5. 绑定到组件的属性 (通常直接透传)
-  cusTableConfig,     // 计算后的表格配置，绑定到 <CustomTable :config="cusTableConfig">
-  tableEventHandlers, // 表格事件处理，绑定到 <CustomTable v-on="tableEventHandlers">
-  handleDialogClose   // 弹窗关闭事件，绑定到 <el-dialog @close="handleDialogClose">
-} = useCrudPage({
-  // 1. API 配置
-  listApi: api.getList,        // 获取列表数据的 API
-  addApi: api.add,             // 新增数据的 API
-  updateApi: api.update,       // 更新数据的 API
-  deleteApi: api.delete,       // 删除数据的 API
-  batchDeleteApi: api.batchDelete, // 批量删除数据的 API
-
-  // 2. 表格配置
-  customTableConfig: {
-    selection: true,           // 是否显示多选框
-    columns: [
-      { prop: 'name', label: '名称' },
-      { prop: 'action', label: '操作', type: 'action', buttons: [
-         { event: 'edit', btnText: '编辑' },
-         { event: 'delete', btnText: '删除', type: 'danger' }
-      ] }
-    ]
-  },
-
-  // 3. 表单配置
-  initialFormData: { name: '', tags: [] }, // 表单初始数据
-  formRules: { name: [{ required: true }] }, // 表单校验规则
-
-  // 4. 数据转换
-  dataTransform: {
-    // 提交前：将数据转换为后端所需格式
-    beforeSubmit: (data) => ({ ...data, status: 1 }),
-    // 获取详情后：将数据转换为表单所需格式
-    afterGet: (data) => ({ ...data, tags: data.tags.split(',') })
-  },
-
-  // 5. 其他配置
-  idKey: 'uuid',               // 指定主键字段名，默认为 'id'
-  confirmMessage: '确认删除？', // 删除确认框的提示文本
-  arrayFields: ['tags'],       // 自动处理数组字段转换
-  timeFields: [{ field: 'date', prefix: 'create' }] // 自动处理时间范围字段拆分
-})
-```
-
 ## 返回值详解
 
 Hook 返回一个包含表格状态、表单状态和操作方法的对象。
@@ -473,7 +294,7 @@ Hook 返回一个包含表格状态、表单状态和操作方法的对象。
 | `pageInfo` | `Reactive` | 分页信息 `{ pageNum, pageSize }` |
 | `searchParams` | `Reactive` | 搜索表单数据 |
 | `selection` | `Ref<any[]>` | 当前选中的行数组 |
-| `cusTableConfig` | `Computed` | 计算后的表格配置，传给 CustomTable |
+| `tableConfig` | `Computed` | 计算后的表格配置，传给 CustomTable |
 | `tableEventHandlers` | `Object` | 包含 `onSelectionChange`, `onPagination`, `onAction` 等事件处理 |
 | `getTableData` | `Function` | 手动触发列表刷新 |
 | `handleSearch` | `Function` | 触发搜索（重置页码为1） |

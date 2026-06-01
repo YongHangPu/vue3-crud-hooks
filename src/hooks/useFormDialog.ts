@@ -11,6 +11,7 @@ import type { FormDialogConfig, FormDialogHook } from '../types'
  * @returns 返回表单弹窗相关的状态和方法
  */
 export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogHook<T> => {
+  const idKey = config.idKey || 'id'
   // 弹窗显示状态
   const dialogVisible = ref(false)
   // 弹窗模式：新增或编辑
@@ -52,7 +53,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
         // 配置了获取API时，通过API获取详细数据
         formLoading.value = true
         try {
-          const id = row?.id !== undefined ? row.id : row
+          const id = row?.[idKey] !== undefined ? row[idKey] : row
           const [err, res] = await to(config.getApi(id))
           if (!err) {
             // 如果配置了数据转换函数，先执行转换

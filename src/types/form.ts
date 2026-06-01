@@ -25,6 +25,8 @@ export interface FormDialogHook<T = any> {
 export interface FormDialogConfig<T = any> {
   /** 表单初始数据 */
   initialFormData: T
+  /** 主键字段名，编辑态获取详情时使用，默认为 'id' */
+  idKey?: string
   /** 新增数据的API函数 */
   addApi: (data: T) => Promise<any>
   /** 更新数据的API函数 */

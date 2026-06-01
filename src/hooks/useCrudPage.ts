@@ -2,144 +2,84 @@ import { ref, computed } from 'vue'
 import { useTablePage } from './useTablePage'
 import { useFormDialog } from './useFormDialog'
 import { useDataTransform } from './useDataTransform'
-import type { CrudPageConfig, SimpleCrudConfig, CrudPageHook } from '../types'
-
-/**
- * 判断是否为简化配置
- * @param config 配置对象
- */
-function isSimpleConfig<T>(config: SimpleCrudConfig<T> | CrudPageConfig<T>): config is SimpleCrudConfig<T> {
-  return 'apis' in config && 'form' in config
-}
-
-/**
- * 将简化配置转换为完整配置
- * @param simpleConfig 简化配置对象
- */
-function convertToFullConfig<T>(simpleConfig: SimpleCrudConfig<T>): CrudPageConfig<T> {
-  const { apis, form, table, search, advanced = {} } = simpleConfig
-
-  return {
-    // API 配置
-    listApi: apis.list,
-    addApi: apis.add,
-    updateApi: apis.update,
-    deleteApi: apis.delete,
-    batchDeleteApi: apis.batchDelete,
-    deleteAllApi: undefined, // 简化配置暂不支持
-    getApi: apis.get,
-
-    // 表单配置
-    initialFormData: form.initialData,
-    formRules: form.rules,
-
-    // 表格配置
-    customTableConfig: table.config,
-    dataKey: table.dataKey,
-    totalKey: table.totalKey,
-    autoFetch: table.autoFetch,
-    beforeSearch: search?.beforeSearch,
-
-    // 搜索配置
-    initialSearchForm: search?.initialData,
-
-    // 高级配置
-    arrayFields: advanced.arrayFields,
-    timeFields: advanced.timeFields,
-    dataTransform: {
-      beforeSubmit: form.beforeSubmit,
-      afterGet: form.afterGet
-    },
-    messageApi: advanced.messageApi,
-
-    // 回调函数
-    onSuccess: form.onSuccess,
-    onSubmitSuccess: form.onSubmitSuccess,
-    onDeleteSuccess: advanced.callbacks?.onDeleteSuccess,
-    onBatchDeleteSuccess: advanced.callbacks?.onBatchDeleteSuccess,
-
-    // 导出配置
-    exportFunction: apis.export ? ({ params }) => apis.export!(params) : undefined,
-    exportUrl: table.exportUrl
-  }
-}
+import type { CrudPageConfig, CrudPageHook } from '../types'
 
 /**
  * 通用 CRUD 页面 Hook
- * @description 集成表格展示、表单弹窗、数据转换等功能的综合性Hook。支持简化配置和完整配置两种使用方式
+ * @description 集成表格展示、表单弹窗、数据转换等功能的综合性 Hook
  * @template T 表单数据类型
- * @param config CRUD页面配置选项（支持简化配置和完整配置）
+ * @param config CRUD 页面配置选项
  * @returns 返回CRUD页面所需的所有状态和方法
  */
-export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfig<T>): CrudPageHook<T> => {
+export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T> => {
   const { arrayToString, stringToArray } = useDataTransform()
   const importDialogVisible = ref(false)
-
-  // 检测配置类型并转换
-  const normalizedConfig = isSimpleConfig(config)
-    ? convertToFullConfig(config as SimpleCrudConfig<T>)
-    : config as CrudPageConfig<T>
+  const { apis, form, table, search, advanced = {} } = config
 
   // 初始化表格页面 Hook
   const tablePageHook = useTablePage(
-    normalizedConfig.listApi,
-    normalizedConfig.initialSearchForm || {},
+    apis.list,
+    search?.initialData || {},
     {
-      dataKey: normalizedConfig.dataKey,
-      totalKey: normalizedConfig.totalKey,
-      autoDetect: normalizedConfig.autoDetect,
-      autoFetch: normalizedConfig.autoFetch,
-      beforeSearch: normalizedConfig.beforeSearch,
-      customTableConfig: normalizedConfig.customTableConfig,
-      arrayFields: normalizedConfig.arrayFields,
-      timeFields: normalizedConfig.timeFields,
-      messageApi: normalizedConfig.messageApi,
-      exportUrl: normalizedConfig.exportUrl
+      dataKey: table.dataKey,
+      totalKey: table.totalKey,
+      autoDetect: table.autoDetect,
+      autoFetch: table.autoFetch,
+      beforeSearch: search?.beforeSearch,
+      customTableConfig: table.config,
+      arrayFields: advanced.arrayFields,
+      timeFields: advanced.timeFields,
+      messageApi: advanced.messageApi,
+      exportUrl: table.exportUrl
     },
     {
-      deleteApi: normalizedConfig.deleteApi,
-      batchDeleteApi: normalizedConfig.batchDeleteApi,
-      deleteAllApi: normalizedConfig.deleteAllApi,
-      idKey: normalizedConfig.idKey,
-      confirmMessage: normalizedConfig.confirmMessage,
-      batchConfirmMessage: normalizedConfig.batchConfirmMessage,
-      deleteAllConfirmMessage: normalizedConfig.deleteAllConfirmMessage,
-      onDeleteSuccess: normalizedConfig.onDeleteSuccess,
-      onBatchDeleteSuccess: normalizedConfig.onBatchDeleteSuccess
+      deleteApi: apis.delete,
+      batchDeleteApi: apis.batchDelete,
+      deleteAllApi: apis.deleteAll,
+      idKey: table.idKey,
+      confirmMessage: table.confirmMessage,
+      batchConfirmMessage: table.batchConfirmMessage,
+      deleteAllConfirmMessage: table.deleteAllConfirmMessage,
+      onDeleteSuccess: advanced.callbacks?.onDeleteSuccess,
+      onBatchDeleteSuccess: advanced.callbacks?.onBatchDeleteSuccess
     },
     {
-      exportFunction: normalizedConfig.exportFunction,
-      arrayFields: normalizedConfig.arrayFields,
-      timeFields: normalizedConfig.timeFields,
-      idKey: normalizedConfig.idKey
+      exportFunction: apis.export,
+      arrayFields: advanced.arrayFields,
+      timeFields: advanced.timeFields,
+      idKey: table.idKey
     }
   )
 
   // 初始化表单弹窗 Hook
   const formDialogHook = useFormDialog({
-    initialFormData: normalizedConfig.initialFormData,
-    addApi: normalizedConfig.addApi,
-    updateApi: normalizedConfig.updateApi,
-    getApi: normalizedConfig.getApi,
-    formRules: normalizedConfig.formRules,
+    initialFormData: form.initialData,
+    idKey: table.idKey,
+    addApi: apis.add,
+    updateApi: apis.update,
+    getApi: apis.get,
+    formRules: form.rules,
     // 表单提交成功后自动刷新表格数据
-    onSuccess: tablePageHook.getTableData,
+    onSuccess: () => {
+      tablePageHook.getTableData()
+      form.onSuccess?.()
+    },
     // 传递自定义成功回调
-    onSubmitSuccess: normalizedConfig.onSubmitSuccess,
-    messageApi: normalizedConfig.messageApi, // 透传 messageApi
+    onSubmitSuccess: form.onSubmitSuccess,
+    messageApi: advanced.messageApi,
     dataTransform: {
       // 提交前数据转换函数，用于在提交前对数据进行处理
       beforeSubmit: (data: T) => {
         let processed = data
 
         // 处理数组字段转换
-        if (normalizedConfig.arrayFields?.length) {
-          processed = arrayToString(processed, normalizedConfig.arrayFields)
+        if (advanced.arrayFields?.length) {
+          processed = arrayToString(processed, advanced.arrayFields)
         }
 
         // 调用自定义的 beforeSubmit 函数转换
-        if (normalizedConfig.dataTransform?.beforeSubmit) {
-          processed = normalizedConfig.dataTransform.beforeSubmit(processed)
+        if (form.beforeSubmit) {
+          processed = form.beforeSubmit(processed)
         }
         return processed
       },
@@ -148,13 +88,13 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
         let processed = data
 
         // 先调用自定义的 afterGet 转换
-        if (normalizedConfig.dataTransform?.afterGet) {
-          processed = normalizedConfig.dataTransform.afterGet(processed)
+        if (form.afterGet) {
+          processed = form.afterGet(processed)
         }
 
         // 处理数组字段转换
-        if (normalizedConfig.arrayFields?.length) {
-          processed = stringToArray(processed, normalizedConfig.arrayFields)
+        if (advanced.arrayFields?.length) {
+          processed = stringToArray(processed, advanced.arrayFields)
         }
         return processed
       }
@@ -166,8 +106,8 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
    * @description 基于 customTableConfig 和表格数据生成完整的表格配置，当数据为空时不显示分页
    * @returns CustomTable 组件配置
    */
-  const cusTableConfig = computed(() => {
-    if (!normalizedConfig.customTableConfig) {
+  const tableConfig = computed(() => {
+    if (!table.config) {
       return null
     }
 
@@ -182,15 +122,13 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
    * @param index 行索引
    */
   const handleCustomAction = (event: string, row: any, index: number) => {
-    // 优先使用 normalizedConfig 中的自定义事件处理器
-    if (normalizedConfig.customTableConfig?.onCustomAction) {
-      normalizedConfig.customTableConfig.onCustomAction(event, row, index)
+    if (table.config?.onCustomAction) {
+      table.config.onCustomAction(event, row, index)
       return
     }
 
-    // 其次使用简化配置中的自定义事件处理器
-    if (isSimpleConfig(config) && config.table?.onCustomAction) {
-      config.table.onCustomAction(event, row, index)
+    if (table.onCustomAction) {
+      table.onCustomAction(event, row, index)
       return
     }
 
@@ -218,10 +156,9 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
         return
       }
 
-      // 尝试使用默认事件处理器
-      const defaultHandler = tablePageHook.tableEventHandlers.onAction
-      if (defaultHandler) {
-        defaultHandler(event, row, index)
+      // 删除事件沿用 useTablePage 的默认处理
+      if (event === 'delete') {
+        tablePageHook.tableEventHandlers.onAction?.(event, row, index)
         return
       }
 
@@ -254,7 +191,7 @@ export const useCrudPage = <T = any>(config: SimpleCrudConfig<T> | CrudPageConfi
     // 表单相关状态和方法
     ...formDialogHook,
     // CustomTable 配置和事件处理
-    cusTableConfig,
+    tableConfig,
     tableEventHandlers,
     // 工具方法
     importDialogVisible,

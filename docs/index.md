@@ -10,8 +10,8 @@ hero:
       text: 快速开始
       link: /hooks/use-crud-page
     - theme: alt
-      text: GitHub
-      link: https://github.com/your-repo/vue3-crud-hooks
+      text: 架构说明
+      link: /architecture
 
 features:
   - title: 列表页（useTablePage）

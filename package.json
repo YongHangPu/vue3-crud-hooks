@@ -74,6 +74,10 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:zh": "pnpm test:coverage && node ./scripts/coverage-zh.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
@@ -90,13 +94,17 @@
     "@vitejs/plugin-vue": "^6.0.2",
     "@vitepress-demo-preview/component": "^2.6.1",
     "@vitepress-demo-preview/plugin": "^1.4.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "@vue/test-utils": "^2.4.10",
     "element-plus": "^2.11.8",
+    "jsdom": "^29.1.1",
     "lodash-unified": "^1.0.3",
     "unplugin-auto-import": "^0.17.6",
     "unplugin-vue-components": "^0.26.0",
     "vite": "^6.0.0",
     "vite-plugin-dts": "^4.5.0",
     "vitepress": "2.0.0-alpha.13",
+    "vitest": "^4.1.7",
     "vue": "^3.5.25"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"

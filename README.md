@@ -11,7 +11,7 @@
 - 📦 **逻辑复用**：将表格管理、分页、搜索、表单弹窗、数据导出等繁琐逻辑高度封装
 - 🧩 **组件支持**：内置 `CustomTable` 和 `Pagination` 组件，与 Hooks 完美配合，进一步减少模板代码
 - 🌲 **按需引入**：支持 Tree Shaking 和子路径导入，确保包体积最小化
-- 🛠 **高度可配置**：支持简化配置（快速开发）和完整配置（复杂场景），灵活应对各种需求
+- 🛠 **高度可配置**：统一使用分层配置，兼顾快速开发与复杂场景扩展
 - 📝 **TypeScript**：完全使用 TypeScript 编写，提供完整的类型推断和智能提示
 - 🔌 **独立运行**：模块解耦，你可以单独使用 `useTablePage` 管理列表，或单独使用 `useFormDialog` 管理弹窗
 - 📢 **消息解耦**：内置 `useMessage` Hook，支持自定义消息提示 UI，默认适配 Element Plus
@@ -21,12 +21,6 @@
 ```bash
 # pnpm
 pnpm add vue3-crud-hooks
-
-# npm
-npm install vue3-crud-hooks
-
-# yarn
-yarn add vue3-crud-hooks
 ```
 
 ## 🔨 快速开始
@@ -91,13 +85,13 @@ const {
   dialogVisible,
   dialogMode,
   formData,
-  
+
   // 方法
   handleSearch,
   handleReset,
   openDialog,
   submitForm,
-  
+
   // 组件配置与事件
   tableConfig,
   tableEventHandlers
@@ -108,28 +102,24 @@ const {
     update: updateData,
     delete: deleteData
   },
-  // 表格配置（用于生成 CustomTable 配置）
-  customTableConfig: {
-    columns: [
-      { type: 'selection', width: 55 },
-      { type: 'index', label: '序号', width: 60 },
-      { prop: 'name', label: '名称', minWidth: 120 },
-      { prop: 'status', label: '状态', width: 100 }, // 使用插槽
-      { prop: 'createTime', label: '创建时间', width: 180 },
-      {
-        type: 'action',
-        label: '操作',
-        width: 150,
-        buttons: [
-          { btnText: '编辑', event: 'edit', type: 'primary' },
-          { btnText: '删除', event: 'delete', type: 'danger' }
-        ]
-      }
-    ],
-    onCustomAction: (event, row) => {
-      if (event === 'edit') {
-        openDialog('edit', row)
-      }
+  table: {
+    config: {
+      selection: true,
+      index: true,
+      columns: [
+        { prop: 'name', label: '名称', minWidth: 120 },
+        { prop: 'status', label: '状态', width: 100 },
+        { prop: 'createTime', label: '创建时间', width: 180 },
+        {
+          type: 'action',
+          label: '操作',
+          width: 150,
+          buttons: [
+            { btnText: '编辑', event: 'edit', type: 'primary' },
+            { btnText: '删除', event: 'delete', type: 'danger' }
+          ]
+        }
+      ]
     }
   },
   form: {
@@ -191,9 +181,9 @@ const config = {
   index: true,
   columns: [
     { prop: 'name', label: 'Name' },
-    { 
-      type: 'action', 
-      buttons: [{ btnText: 'Edit', event: 'edit' }] 
+    {
+      type: 'action',
+      buttons: [{ btnText: 'Edit', event: 'edit' }]
     }
   ],
   pagination: {

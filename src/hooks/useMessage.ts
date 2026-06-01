@@ -9,19 +9,34 @@ import type { MessageApi } from '../types'
  */
 export const useMessage = (customMessageApi?: Partial<MessageApi>) => {
   const success = (msg: string) => {
-    customMessageApi?.success?.(msg) ?? ElMessage.success(msg)
+    if (customMessageApi?.success) {
+      customMessageApi.success(msg)
+      return
+    }
+    ElMessage.success(msg)
   }
 
   const error = (msg: string) => {
-    customMessageApi?.error?.(msg) ?? console.error(msg)
+    if (customMessageApi?.error) {
+      customMessageApi.error(msg)
+      return
+    }
+    ElMessage.error(msg)
   }
 
   const warning = (msg: string) => {
-    customMessageApi?.warning?.(msg) ?? ElMessage.warning(msg)
+    if (customMessageApi?.warning) {
+      customMessageApi.warning(msg)
+      return
+    }
+    ElMessage.warning(msg)
   }
 
   const confirm = (msg: string, title = '提示', options?: any) => {
-    return customMessageApi?.confirm?.(msg, title, options) ?? ElMessageBox.confirm(msg, title, {
+    if (customMessageApi?.confirm) {
+      return customMessageApi.confirm(msg, title, options)
+    }
+    return ElMessageBox.confirm(msg, title, {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
