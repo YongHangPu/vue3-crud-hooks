@@ -29,7 +29,8 @@ interface Props {
   background?: boolean;
   autoScroll?: boolean;
   hidden?: boolean;
-  float?: string;
+  /** 分页组件对齐方式，默认为 'right' */
+  align?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,7 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
   background: true,
   autoScroll: false,
   hidden: false,
-  float: 'right',
+  align: 'right',
 });
 
 // 允许属性继承，避免警告
@@ -88,7 +89,7 @@ function handleCurrentChange(val: number) {
 <style lang="scss" scoped>
 .pagination-container {
   .el-pagination {
-    float: v-bind('props.float');
+    float: v-bind('props.align');
   }
 }
 .pagination-container.hidden {

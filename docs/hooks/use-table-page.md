@@ -79,6 +79,7 @@ function useTablePage<T = any>(
 | handleExport | 导出数据 | `(options?: ExportOptions) => void` |
 | tableConfig | CustomTable 组件的完整配置 | `ComputedRef<CustomTableConfig>` |
 | tableEventHandlers | CustomTable 组件的事件处理器 | `Record<string, Function>` |
+| tableBindings | CustomTable 完整绑定集（v-bind 一键绑定） | `ComputedRef` |
 
 ## 使用示例
 
@@ -111,11 +112,8 @@ function useTablePage<T = any>(
 
     <!-- 表格组件 -->
     <CustomTable
-      v-if="tableConfig"
-      :config="tableConfig"
-      :data="tableData"
-      :loading="loading"
-      v-bind="tableEventHandlers"
+      v-if="tableBindings.config"
+      v-bind="tableBindings"
     />
   </div>
 </template>

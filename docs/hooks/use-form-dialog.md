@@ -37,7 +37,8 @@ demo-preview=../examples/use-form-dialog/advanced.vue
 | `updateApi` | 更新接口函数 | `(data: T) => Promise<any>` | - |
 | `getApi` | 获取详情接口函数（编辑模式下使用） | `(id: any) => Promise<any>` | - |
 | `dataTransform` | 数据转换配置 | `DataTransformConfig` | - |
-| `onSuccess` | 提交成功并关闭弹窗后的回调（通常用于刷新列表） | `() => void` | - |
+| `onAfterSubmit` | 提交成功并关闭弹窗后的回调（通常用于刷新列表） | `() => void` | - |
+| `onSuccess` | `onAfterSubmit` 的别名（已废弃） | `() => void` | - |
 | `onSubmitSuccess` | 提交接口调用成功后的回调（此时弹窗未关闭） | `(res: any, mode: 'add' \| 'edit', formData: T) => void` | - |
 | `messageApi` | 自定义消息提示实现 | `MessageApi` | ElMessage |
 

@@ -228,15 +228,13 @@ const {
   },
   // 5. 高级配置
   advanced: {
-    callbacks: {
-      // 删除成功后的回调
-      onDeleteSuccess: () => {
-        handleSearch() // 刷新列表
-      },
-      // 批量删除成功后的回调
-      onBatchDeleteSuccess: () => {
-        handleSearch() // 刷新列表
-      }
+    // 删除成功后的回调
+    onDeleteSuccess: () => {
+      handleSearch() // 刷新列表
+    },
+    // 批量删除成功后的回调
+    onBatchDeleteSuccess: () => {
+      handleSearch() // 刷新列表
     }
   }
 })

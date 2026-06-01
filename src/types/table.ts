@@ -14,7 +14,8 @@ export interface PaginationConfig {
   layout?: string
   background?: boolean
   pagerCount?: number
-  float?: string
+  /** 分页组件对齐方式，默认为 'right' */
+  align?: string
   [key: string]: any
 }
 
@@ -91,8 +92,6 @@ export interface TablePageHook<T = any> {
   }
   searchParams: Record<string, any>
   /** 选中的数据行 */
-  selection: Ref<T[]>
-  /** 选中的数据行（同 selection） */
   selectedRows: Ref<T[]>
   selectedIds: ComputedRef<any[]>
   getTableData: () => Promise<void>
@@ -104,12 +103,8 @@ export interface TablePageHook<T = any> {
   handleDelete: (row: T) => Promise<void>
   handleBatchDelete: () => Promise<void>
   handleExport: (options?: { url?: string; filename?: string; params?: any }) => void
-  tableConfig: ComputedRef<CustomTableConfig | null>
-  tableEventHandlers: {
-    onSelectionChange: (selection: T[]) => void
-    onPagination: (pagination: { page: number; limit: number }) => void
-    onAction: (event: string, row: T, index: number) => void
-  }
+  /** 可直接通过 v-bind="tableBindings" 绑定到 <CustomTable> 的属性集 */
+  tableBindings: ComputedRef<Record<string, any>>
   setTableColumns: (columns: TableColumnConfig<T>[]) => void
 }
 

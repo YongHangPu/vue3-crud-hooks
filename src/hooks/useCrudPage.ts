@@ -13,7 +13,6 @@ import type { CrudPageConfig, CrudPageHook } from '../types'
  */
 export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T> => {
   const { arrayToString, stringToArray } = useDataTransform()
-  const importDialogVisible = ref(false)
   const { apis, form, table, search, advanced = {} } = config
 
   // 初始化表格页面 Hook
@@ -40,8 +39,8 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       confirmMessage: table.confirmMessage,
       batchConfirmMessage: table.batchConfirmMessage,
       deleteAllConfirmMessage: table.deleteAllConfirmMessage,
-      onDeleteSuccess: advanced.callbacks?.onDeleteSuccess,
-      onBatchDeleteSuccess: advanced.callbacks?.onBatchDeleteSuccess
+      onDeleteSuccess: advanced.onDeleteSuccess,
+      onBatchDeleteSuccess: advanced.onBatchDeleteSuccess
     },
     {
       exportFunction: apis.export,
@@ -60,9 +59,9 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     getApi: apis.get,
     formRules: form.rules,
     // 表单提交成功后自动刷新表格数据
-    onSuccess: () => {
+    onAfterSubmit: () => {
       tablePageHook.getTableData()
-      form.onSuccess?.()
+      form.onAfterSubmit?.()
     },
     // 传递自定义成功回调
     onSubmitSuccess: form.onSubmitSuccess,
@@ -102,20 +101,6 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
   })
 
   /**
-   * 获取 CustomTable 配置
-   * @description 基于 customTableConfig 和表格数据生成完整的表格配置，当数据为空时不显示分页
-   * @returns CustomTable 组件配置
-   */
-  const tableConfig = computed(() => {
-    if (!table.config) {
-      return null
-    }
-
-    // 直接使用tablePageHook的tableConfig
-    return tablePageHook.tableConfig.value
-  })
-
-  /**
    * 处理自定义事件
    * @param event 事件名
    * @param row 行数据
@@ -140,8 +125,10 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
    * 处理 CustomTable 事件
    * @description 扩展tablePageHook的事件处理器，添加编辑功能
    */
+  // 从 tableBindings 中取原始事件处理器（含 onAction/onPagination/onSelectionChange）
   const tableEventHandlers = {
-    ...tablePageHook.tableEventHandlers,
+    onSelectionChange: tablePageHook.tableBindings.value?.onSelectionChange ?? (() => {}),
+    onPagination: tablePageHook.tableBindings.value?.onPagination ?? (() => {}),
 
     /**
      * 重写操作按钮点击处理
@@ -158,7 +145,7 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 
       // 删除事件沿用 useTablePage 的默认处理
       if (event === 'delete') {
-        tablePageHook.tableEventHandlers.onAction?.(event, row, index)
+        tablePageHook.tableBindings.value?.onAction?.(event, row, index)
         return
       }
 
@@ -167,13 +154,13 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     }
   }
 
-  /**
-   * 批量导入处理
-   * @description 批量导入功能的占位方法，待具体实现
-   */
-  const handleBatchImport = () => {
-    importDialogVisible.value = true
-  }
+  /** 可直接通过 v-bind="tableBindings" 绑定到 <CustomTable> 的完整属性集 */
+  const tableBindings = computed(() => ({
+    config: table.config ? tablePageHook.tableBindings.value?.config ?? null : null,
+    data: tablePageHook.tableData.value,
+    loading: tablePageHook.loading.value,
+    ...tableEventHandlers
+  }))
 
   /**
    * 导出处理
@@ -190,12 +177,9 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     ...tablePageHook,
     // 表单相关状态和方法
     ...formDialogHook,
-    // CustomTable 配置和事件处理
-    tableConfig,
-    tableEventHandlers,
-    // 工具方法
-    importDialogVisible,
-    handleBatchImport,
+    // CustomTable v-bind 一键绑定
+    tableBindings,
+    // 导出方法
     handleExport
   }
 }

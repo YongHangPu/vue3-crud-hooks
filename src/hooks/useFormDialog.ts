@@ -117,7 +117,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
 
       // 关闭弹窗并执行通用成功回调
       handleDialogClose()
-      config.onSuccess?.()
+      config.onAfterSubmit?.()
     } finally {
       submitLoading.value = false
     }

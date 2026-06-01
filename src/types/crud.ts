@@ -1,21 +1,11 @@
-import type { CustomTableConfig, TablePageHook } from './table'
+import type { TablePageHook, CustomTableConfig } from './table'
 import type { FormDialogHook } from './form'
 import type { MessageApi } from './common'
-import type { Ref, ComputedRef } from 'vue'
 
 /**
  * CRUD 页面 Hook 返回值接口
  */
-export interface CrudPageHook<T = any> extends Omit<TablePageHook<T>, 'tableEventHandlers'>, FormDialogHook<T> {
-  tableConfig: ComputedRef<CustomTableConfig | null>
-  tableEventHandlers: {
-    onSelectionChange: (selection: any[]) => void
-    onPagination: (pagination: { page: number; limit: number }) => void
-    onAction: (event: string, row: any, index: number) => void
-  }
-  importDialogVisible: Ref<boolean>
-  handleBatchImport: () => void
-}
+export interface CrudPageHook<T = any> extends TablePageHook<T>, FormDialogHook<T> {}
 
 /**
  * CRUD 页面配置接口
@@ -42,9 +32,9 @@ export interface CrudPageConfig<T = any> {
     beforeSubmit?: (data: T) => any
     /** 获取数据后转换 */
     afterGet?: (data: any) => T
-    /** 成功回调 */
-    onSuccess?: () => void
-    /** 提交成功回调 */
+    /** 提交成功后弹窗关闭时的回调，通常用于刷新列表 */
+    onAfterSubmit?: () => void
+    /** 提交成功回调，可访问 API 响应数据 */
     onSubmitSuccess?: (response: any, mode: 'add' | 'edit', formData: T) => Promise<void> | void
   }
   /** 表格配置 */
@@ -84,11 +74,10 @@ export interface CrudPageConfig<T = any> {
     arrayFields?: string[]
     /** 时间字段 */
     timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
-    /** 回调函数 */
-    callbacks?: {
-      onDeleteSuccess?: (deletedRow: any) => void
-      onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
-    }
+    /** 删除成功回调 */
+    onDeleteSuccess?: (deletedRow: any) => void
+    /** 批量删除成功回调 */
+    onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
     /** 消息 API */
     messageApi?: Partial<MessageApi>
   }

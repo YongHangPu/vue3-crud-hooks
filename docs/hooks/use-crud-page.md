@@ -116,8 +116,8 @@ const { ... } = useCrudPage({
       name: [{ required: true, message: '请输入名称' }]
     },
 
-    // 提交成功后的回调 (默认会自动刷新列表)
-    onSuccess: () => {
+    // 提交成功后弹窗关闭时的回调 (默认会自动刷新列表)
+    onAfterSubmit: () => {
       ElMessage.success('操作成功')
     },
 
@@ -173,11 +173,9 @@ const { ... } = useCrudPage({
       { field: 'createTime', prefix: { start: 'start', end: 'end' } }
     ],
 
-    // 更多回调
-    callbacks: {
-      onDeleteSuccess: () => console.log('删除成功'),
-      onBatchDeleteSuccess: () => console.log('批量删除成功')
-    }
+    // 删除/批量删除成功回调
+    onDeleteSuccess: () => console.log('删除成功'),
+    onBatchDeleteSuccess: () => console.log('批量删除成功')
   }
 })
 ```
@@ -214,9 +212,8 @@ const {
   handleExport,    // 触发导出
   submitForm,      // 提交表单
 
-  // 5. 绑定到组件的属性 (通常直接透传)
-  tableConfig,        // 计算后的表格配置，绑定到 <CustomTable :config="tableConfig">
-  tableEventHandlers, // 表格事件处理，绑定到 <CustomTable v-on="tableEventHandlers">
+  // 5. 绑定到组件的属性 (v-bind 即可，无需分开)
+  tableBindings,      // 直接绑定到 <CustomTable v-bind="tableBindings">
   handleDialogClose   // 弹窗关闭事件，绑定到 <el-dialog @close="handleDialogClose">
 } = useCrudPage({
   // 1. 接口配置 (apis)
@@ -251,8 +248,8 @@ const {
     initialData: { name: '', tags: [] },
     // 表单校验规则 (Element Plus 格式)
     rules: { name: [{ required: true }] },
-    // 提交成功后的回调
-    onSuccess: () => ElMessage.success('操作成功')
+    // 提交成功后弹窗关闭时的回调
+    onAfterSubmit: () => ElMessage.success('操作成功')
   },
 
   // 4. 搜索配置 (search)
@@ -296,6 +293,7 @@ Hook 返回一个包含表格状态、表单状态和操作方法的对象。
 | `selection` | `Ref<any[]>` | 当前选中的行数组 |
 | `tableConfig` | `Computed` | 计算后的表格配置，传给 CustomTable |
 | `tableEventHandlers` | `Object` | 包含 `onSelectionChange`, `onPagination`, `onAction` 等事件处理 |
+| `tableBindings` | `Computed` | 含 config/data/loading 和所有事件处理器，v-bind 到 CustomTable |
 | `getTableData` | `Function` | 手动触发列表刷新 |
 | `handleSearch` | `Function` | 触发搜索（重置页码为1） |
 | `handleReset` | `Function` | 重置搜索条件 |
@@ -321,4 +319,3 @@ Hook 返回一个包含表格状态、表单状态和操作方法的对象。
 | --- | --- | --- |
 | `arrayToString` | `Function` | 工具：数组转字符串 |
 | `stringToArray` | `Function` | 工具：字符串转数组 |
-| `handleBatchImport` | `Function` | 触发批量导入（需自行实现 UI） |

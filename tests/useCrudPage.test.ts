@@ -61,7 +61,7 @@ describe('useCrudPage', () => {
       })
     )
 
-    await hook.tableEventHandlers.onAction('edit', { id: 1 }, 0)
+    await hook.tableBindings.value.onAction('edit', { id: 1 }, 0)
     await flushPromises()
 
     expect(getApi).toHaveBeenCalledWith(1)
@@ -92,7 +92,7 @@ describe('useCrudPage', () => {
         },
         form: {
           initialData: { name: '', tags: [] as string[] },
-          onSuccess: formOnSuccess
+          onAfterSubmit: formOnSuccess
         },
         table: {
           autoFetch: false,
@@ -126,7 +126,7 @@ describe('useCrudPage', () => {
     expect(hook.dialogVisible.value).toBe(false)
   })
 
-  it('优先使用 tableConfig 并按表格配置处理自定义事件', async () => {
+  it('tableBindings 包含表格配置并可处理自定义事件', async () => {
     const onCustomAction = vi.fn()
     const hook = mountComposable(() =>
       useCrudPage({
@@ -151,9 +151,9 @@ describe('useCrudPage', () => {
       })
     )
 
-    expect(hook.tableConfig.value).not.toBeNull()
+    expect(hook.tableBindings.value?.config).not.toBeNull()
 
-    await hook.tableEventHandlers.onAction('view', { id: 1 }, 0)
+    await hook.tableBindings.value.onAction('view', { id: 1 }, 0)
 
     expect(onCustomAction).toHaveBeenCalledWith('view', { id: 1 }, 0)
   })
@@ -183,7 +183,7 @@ describe('useCrudPage', () => {
       })
     )
 
-    await hook.tableEventHandlers.onAction('view', { id: 2 }, 1)
+    await hook.tableBindings.value.onAction('view', { id: 2 }, 1)
 
     expect(onCustomAction).toHaveBeenCalledWith('view', { id: 2 }, 1)
   })
@@ -259,7 +259,7 @@ describe('useCrudPage', () => {
     expect(hook.dialogVisible.value).toBe(true)
   })
 
-  it('删除成功时执行 advanced.callbacks.onDeleteSuccess', async () => {
+  it('删除成功时执行 onDeleteSuccess', async () => {
     const onDeleteSuccess = vi.fn()
     const messageApi = createMessageApi()
     messageApi.confirm.mockResolvedValue(true)
@@ -282,9 +282,7 @@ describe('useCrudPage', () => {
         },
         advanced: {
           messageApi,
-          callbacks: {
-            onDeleteSuccess
-          }
+          onDeleteSuccess
         }
       })
     )
@@ -295,7 +293,7 @@ describe('useCrudPage', () => {
     expect(onDeleteSuccess).toHaveBeenCalledWith({ id: 1, name: 'Tom' })
   })
 
-  it('批量删除成功时执行 advanced.callbacks.onBatchDeleteSuccess', async () => {
+  it('批量删除成功时执行 onBatchDeleteSuccess', async () => {
     const onBatchDeleteSuccess = vi.fn()
     const messageApi = createMessageApi()
     messageApi.confirm.mockResolvedValue(true)
@@ -318,9 +316,7 @@ describe('useCrudPage', () => {
         },
         advanced: {
           messageApi,
-          callbacks: {
-            onBatchDeleteSuccess
-          }
+          onBatchDeleteSuccess
         }
       })
     )
@@ -334,7 +330,7 @@ describe('useCrudPage', () => {
     expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1 }], false)
   })
 
-  it('无表格配置时 tableConfig 返回 null 且支持批量导入开关', () => {
+  it('无表格配置时 tableBindings.config 为 null', () => {
     const hook = mountComposable(() =>
       useCrudPage({
         apis: {
@@ -354,12 +350,7 @@ describe('useCrudPage', () => {
       })
     )
 
-    expect(hook.tableConfig.value).toBeNull()
-    expect(hook.importDialogVisible.value).toBe(false)
-
-    hook.handleBatchImport()
-
-    expect(hook.importDialogVisible.value).toBe(true)
+    expect(hook.tableBindings.value?.config).toBeNull()
   })
 
   it('没有自定义处理器时输出警告', async () => {
@@ -383,7 +374,7 @@ describe('useCrudPage', () => {
       })
     )
 
-    await hook.tableEventHandlers.onAction('view', { id: 1 }, 0)
+    await hook.tableBindings.value.onAction('view', { id: 1 }, 0)
 
     expect(warnSpy).toHaveBeenCalledWith('未找到事件 "view" 的处理器', {
       event: 'view',

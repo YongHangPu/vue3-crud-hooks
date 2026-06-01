@@ -215,7 +215,7 @@ const {
       }
     }
   },
-  onSuccess: () => {
+  onAfterSubmit: () => {
     fetchList()
   }
 })

@@ -15,7 +15,7 @@ describe('useTablePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('挂载时自动获取列表并生成 tableConfig', async () => {
+  it('挂载时自动获取列表，tableBindings 含分页信息', async () => {
     const fetchData = vi.fn().mockResolvedValue({
       rows: [{ id: 1, name: 'Tom' }],
       total: 1
@@ -43,7 +43,7 @@ describe('useTablePage', () => {
     })
     expect(hook.tableData.value).toEqual([{ id: 1, name: 'Tom' }])
     expect(hook.pageInfo.total).toBe(1)
-    expect(hook.tableConfig.value?.pagination).toEqual(
+    expect(hook.tableBindings.value?.config?.pagination).toEqual(
       expect.objectContaining({
         total: 1,
         currentPage: 1,
@@ -218,7 +218,7 @@ describe('useTablePage', () => {
 
     await hook.handleBatchDelete()
 
-    expect(messageApi.warning).toHaveBeenCalledWith('没有需要删除的数据！')
+    expect(messageApi.warning).toHaveBeenCalledWith('请先勾选要删除的数据')
   })
 
   it('批量删除取消时不调用接口', async () => {
@@ -271,30 +271,25 @@ describe('useTablePage', () => {
     expect(fetchData).toHaveBeenCalledWith({ pageNum: 1, pageSize: 10 })
   })
 
-  it('删除全部成功时重置到第一页并透传删除行回调', async () => {
-    const deleteAllApi = vi.fn().mockResolvedValue({ msg: '删除全部成功' })
-    const onBatchDeleteSuccess = vi.fn()
+  it('未选中行时调用批量删除给出提示不执行删除', async () => {
+    const deleteApi = vi.fn().mockResolvedValue({ msg: '删除成功' })
     const messageApi = createMessageApi()
-    messageApi.confirm.mockResolvedValue(true)
+    const warningSpy = vi.spyOn(messageApi, 'warning')
 
     const hook = mountComposable(() =>
       useTablePage(
         vi.fn(),
         {},
         { autoFetch: false, messageApi },
-        { deleteAllApi, onBatchDeleteSuccess }
+        { deleteApi }
       )
     )
-
-    hook.tableData.value = [{ id: 1 }, { id: 2 }]
-    hook.pageInfo.pageNum = 3
 
     await hook.handleBatchDelete()
     await flushPromises()
 
-    expect(deleteAllApi).toHaveBeenCalled()
-    expect(hook.pageInfo.pageNum).toBe(1)
-    expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1 }, { id: 2 }], true)
+    expect(warningSpy).toHaveBeenCalledWith('请先勾选要删除的数据')
+    expect(deleteApi).not.toHaveBeenCalled()
   })
 
   it('批量删除失败时提示错误', async () => {
@@ -413,7 +408,7 @@ describe('useTablePage', () => {
     expect(removeSpy).toHaveBeenCalled()
   })
 
-  it('tableEventHandlers 能处理选择、分页和自定义事件', async () => {
+  it('tableBindings 包含事件处理函数', async () => {
     const fetchData = vi.fn().mockResolvedValue({ rows: [], total: 0 })
     const onCustomAction = vi.fn()
     const hook = mountComposable(() =>
@@ -431,9 +426,9 @@ describe('useTablePage', () => {
       )
     )
 
-    hook.tableEventHandlers.onSelectionChange([{ id: 1 }, { id: 2 }])
-    await hook.tableEventHandlers.onPagination({ page: 3, limit: 20 })
-    hook.tableEventHandlers.onAction('view', { id: 1 }, 0)
+    hook.tableBindings.value.onSelectionChange([{ id: 1 }, { id: 2 }])
+    await hook.tableBindings.value.onPagination({ page: 3, limit: 20 })
+    hook.tableBindings.value.onAction('view', { id: 1 }, 0)
 
     expect(hook.selectedRows.value).toEqual([{ id: 1 }, { id: 2 }])
     expect(hook.selectedIds.value).toEqual([1, 2])
@@ -475,8 +470,8 @@ describe('useTablePage', () => {
     expect(hook.searchParams.keyword).toBe('init')
     expect(hook.pageInfo.pageNum).toBe(1)
     expect(hook.pageInfo.pageSize).toBe(50)
-    expect(hook.tableConfig.value?.columns).toEqual([{ prop: 'status', label: '状态' }])
-    expect(typeof (hook.tableConfig.value?.index as { index?: (value: number) => number }).index).toBe('function')
-    expect((hook.tableConfig.value?.index as { index: (value: number) => number }).index(0)).toBe(1)
+    expect(hook.tableBindings.value?.config?.columns).toEqual([{ prop: 'status', label: '状态' }])
+    expect(typeof (hook.tableBindings.value?.config?.index as { index?: (value: number) => number }).index).toBe('function')
+    expect((hook.tableBindings.value?.config?.index as { index: (value: number) => number }).index(0)).toBe(1)
   })
 })

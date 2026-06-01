@@ -179,7 +179,7 @@ const {
   },
   addApi: mockApi.add,
   updateApi: mockApi.update,
-  onSuccess: () => {
+  onAfterSubmit: () => {
     // 提交成功后刷新列表
     fetchList()
   }

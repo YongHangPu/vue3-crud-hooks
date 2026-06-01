@@ -35,8 +35,8 @@ export interface FormDialogConfig<T = any> {
   getApi?: (id: any) => Promise<any>
   /** 表单验证规则（可选） */
   formRules?: any
-  /** 提交成功后的通用回调（可选，通常用于刷新列表） */
-  onSuccess?: () => void
+  /** 提交成功后弹窗关闭时的回调（可选，通常用于刷新列表） */
+  onAfterSubmit?: () => void
   /** 提交成功后的自定义回调（可选，可访问API响应数据） */
   onSubmitSuccess?: (response: any, mode: 'add' | 'edit', formData: T) => Promise<void> | void
   /** 数据转换配置（可选） */

@@ -386,20 +386,17 @@ export const useTablePage = <T = any>(
 
   /**
    * 批量删除处理
-   * @param ids 要删除的ID列表，如果不传则使用选中的数据
-   * @description 批量删除数据，支持确认提示和自动刷新
+   * @description 批量删除选中的数据行。未选中任何行时提示用户勾选，不会触发「删除全部」。
    */
   const handleBatchDelete = async () => {
     const deleteIds = selectedIds.value
-    const deleteAll = deleteIds.length === 0
-    // 判断表格数据是否为空
-    if (tableData.value.length === 0) {
-      showMessage.warning('没有需要删除的数据！')
+    if (deleteIds.length === 0) {
+      showMessage.warning('请先勾选要删除的数据')
       return
     }
 
     try {
-      const msg = deleteAll ? `${finalDeleteConfig.deleteAllConfirmMessage}` : `${finalDeleteConfig.batchConfirmMessage}（共${deleteIds.length}条）`
+      const msg = `${finalDeleteConfig.batchConfirmMessage}（共${deleteIds.length}条）`
       await showMessage.confirm(msg)
     } catch {
       return // 用户取消删除
@@ -407,32 +404,24 @@ export const useTablePage = <T = any>(
 
     deleteLoading.value = true
     try {
-      const api = deleteAll ? finalDeleteConfig.deleteAllApi() : finalDeleteConfig.batchDeleteApi(deleteIds)
-
-      const [error, res] = await to(api)
+      const [error, res] = await to(finalDeleteConfig.batchDeleteApi(deleteIds))
       if (error) {
-        showMessage.error(`${deleteAll ? '删除所有数据失败' : '批量删除失败'}: ${error instanceof Error ? error.message : String(error)}`)
+        showMessage.error(`批量删除失败: ${error instanceof Error ? error.message : String(error)}`)
       } else {
         showMessage.success(res.msg)
 
-        // 保存删除前的选中行数据，用于回调
-        const deletedRows = deleteAll ? [...tableData.value] : selectedRows.value.slice()
-
-        if (deleteAll) {
-          // 重置页码到第一页
-          pageInfo.pageNum = 1
-        } else {
-          // 如果当前页没有数据了，回到上一页
-          if (tableData.value.length <= deleteIds.length && pageInfo.pageNum > 1) {
-            pageInfo.pageNum--
-          }
+        // 如果当前页没有数据了，回到上一页
+        if (tableData.value.length <= deleteIds.length && pageInfo.pageNum > 1) {
+          pageInfo.pageNum--
         }
+        // 保存被删除的行数据，用于回调
+        const deletedRows = selectedRows.value.slice()
         // 清空选中状态
         selectedRows.value = []
 
         // 调用批量删除成功回调
         if (finalDeleteConfig.onBatchDeleteSuccess) {
-          finalDeleteConfig.onBatchDeleteSuccess(deletedRows, deleteAll)
+          finalDeleteConfig.onBatchDeleteSuccess(deletedRows, false)
         } else {
           await getTableData()
         }
@@ -535,6 +524,14 @@ export const useTablePage = <T = any>(
     }
   }
 
+  /** 可直接通过 v-bind="tableBindings" 绑定到 <CustomTable> 的完整属性集 */
+  const tableBindings = computed(() => ({
+    config: tableConfig.value,
+    data: tableData.value,
+    loading: loading.value,
+    ...tableEventHandlers
+  }))
+
   /**
    * 导出处理
    * @description 导出表格数据
@@ -591,8 +588,7 @@ export const useTablePage = <T = any>(
     deleteLoading, // 删除操作加载状态
     pageInfo, // 分页信息
     searchParams, // 搜索参数
-    selection: selectedRows, // 选中的数据行
-    selectedRows, // 选中的数据行（保留原有命名）
+    selectedRows, // 选中的数据行
     selectedIds, // 选中的ID列表
 
     // 基础方法
@@ -609,9 +605,8 @@ export const useTablePage = <T = any>(
 
     handleExport, // 导出方法
 
-    // CustomTable 相关
-    tableConfig, // 表格配置（直接可用于CustomTable组件）
-    tableEventHandlers, // 表格事件处理器
+    // CustomTable 相关 — 使用 tableBindings 通过 v-bind 一键绑定
+    tableBindings,
     setTableColumns
   }
 }

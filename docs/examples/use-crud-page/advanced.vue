@@ -302,14 +302,12 @@ const {
       { field: 'createTime', prefix: { start: 'startTime', end: 'endTime' } }
     ],
 
-    // 操作回调
-    callbacks: {
-      onDeleteSuccess: () => {
-        handleSearch() // 删除后刷新
-      },
-      onBatchDeleteSuccess: () => {
-        handleSearch() // 批量删除后刷新
-      }
+    // 删除成功回调
+    onDeleteSuccess: () => {
+      handleSearch() // 删除后刷新
+    },
+    onBatchDeleteSuccess: () => {
+      handleSearch() // 批量删除后刷新
     }
   }
 })

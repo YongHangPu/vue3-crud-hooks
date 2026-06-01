@@ -80,10 +80,10 @@ describe('useFormDialog', () => {
     expect(formRef.clearValidate).toHaveBeenCalled()
   })
 
-  it('新增提交成功时执行 beforeSubmit、onSubmitSuccess 和 onSuccess', async () => {
+  it('新增提交成功时执行 beforeSubmit、onSubmitSuccess 和 onAfterSubmit', async () => {
     const addApi = vi.fn().mockResolvedValue({ msg: '保存成功' })
     const onSubmitSuccess = vi.fn()
-    const onSuccess = vi.fn()
+    const onAfterSubmit = vi.fn()
     const messageApi = createMessageApi()
     const hook = mountComposable(() =>
       useFormDialog({
@@ -91,7 +91,7 @@ describe('useFormDialog', () => {
         addApi,
         updateApi: vi.fn(),
         onSubmitSuccess,
-        onSuccess,
+        onAfterSubmit,
         messageApi,
         dataTransform: {
           beforeSubmit: (data) => ({
@@ -122,7 +122,7 @@ describe('useFormDialog', () => {
       'add',
       { name: 'Tom', tags: ['Vue', 'React'] }
     )
-    expect(onSuccess).toHaveBeenCalled()
+    expect(onAfterSubmit).toHaveBeenCalled()
     expect(hook.dialogVisible.value).toBe(false)
     expect(formRef.resetFields).toHaveBeenCalled()
   })

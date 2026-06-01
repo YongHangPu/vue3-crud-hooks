@@ -25,12 +25,12 @@
         >
           <!-- 自定义表头 -->
           <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="`${column.prop}-header`" :column="scope.column" :$index="scope.$index" />
+            <slot :name="(getColumnSlotName(column) || `column-${index}`) + '-header'" :column="scope.column" :$index="scope.$index" />
           </template>
           <!-- 自定义内容 -->
           <template #default="scope">
             <template v-if="scope && scope.row != null">
-              <slot :name="column.prop || `column-${index}`" :row="scope.row" :index="scope.$index" :column="column" />
+              <slot :name="getColumnSlotName(column) || `column-${index}`" :row="scope.row" :index="scope.$index" :column="column" />
             </template>
           </template>
         </el-table-column>
@@ -42,7 +42,7 @@
         >
           <!-- 自定义表头 -->
           <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="`${column.prop}-header`" :column="scope.column" :$index="scope.$index" />
+            <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
           </template>
           <!-- 操作按钮 -->
           <template #default="scope">
@@ -77,7 +77,7 @@
         >
           <!-- 自定义表头 -->
           <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="`${column.prop}-header`" :column="scope.column" :$index="scope.$index" />
+            <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
           </template>
         </el-table-column>
       </template>
@@ -297,12 +297,20 @@ const emit = defineEmits<{
 }>()
 
 /**
+ * 获取列的插槽名，优先使用 slotName，其次是 prop
+ */
+const getColumnSlotName = (column: ColumnConfig): string | undefined => {
+  return column.slotName || column.prop
+}
+
+/**
  * 检查是否有自定义内容插槽
  * @param column 列配置
  * @returns 是否有自定义插槽
  */
 const hasCustomSlot = (column: ColumnConfig): boolean => {
-  return !!(column.prop && slots[column.prop])
+  const slotName = getColumnSlotName(column)
+  return !!(slotName && slots[slotName])
 }
 
 /**
@@ -311,8 +319,9 @@ const hasCustomSlot = (column: ColumnConfig): boolean => {
  * @returns 是否有自定义表头插槽
  */
 const hasHeaderSlot = (column: ColumnConfig): boolean => {
-  const headerSlotName = `${column.prop}-header`
-  return !!(column.prop && slots[headerSlotName])
+  const slotName = getColumnSlotName(column)
+  const headerSlotName = slotName ? `${slotName}-header` : undefined
+  return !!(headerSlotName && slots[headerSlotName])
 }
 
 /**

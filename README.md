@@ -43,13 +43,8 @@ pnpm add vue3-crud-hooks
       <el-button type="primary" @click="openDialog('add')">新增</el-button>
     </div>
 
-    <!-- 表格组件 -->
-    <CustomTable
-      :config="tableConfig"
-      :data="tableData"
-      :loading="loading"
-      v-bind="tableEventHandlers"
-    >
+    <!-- 表格组件 (v-bind 即可，无需分开传属性和事件) -->
+    <CustomTable v-bind="tableBindings">
       <!-- 自定义列插槽 -->
       <template #status="{ row }">
         <el-tag :type="row.status === 1 ? 'success' : 'danger'">
@@ -81,23 +76,15 @@ import { useCrudPage, CustomTable } from 'vue3-crud-hooks'
 import { getList, addData, updateData, deleteData } from '@/api/demo'
 
 const {
-  // 状态
-  tableData,
-  loading,
   searchParams,
   dialogVisible,
   dialogMode,
   formData,
-
-  // 方法
   handleSearch,
   handleReset,
   openDialog,
   submitForm,
-
-  // 组件配置与事件
-  tableConfig,
-  tableEventHandlers
+  tableBindings
 } = useCrudPage({
   apis: {
     list: getList,
@@ -208,6 +195,7 @@ const config = {
 | --- | --- | --- |
 | `tableConfig` | 生成的表格配置，直接传给 CustomTable 的 config 属性 | `ComputedRef` |
 | `tableEventHandlers` | 表格事件处理器，包含分页、选择、操作等事件处理 | `object` |
+| `tableBindings` | CustomTable 完整绑定（含 config/data/loading/事件），直接 `v-bind` | `ComputedRef` |
 
 ---
 
