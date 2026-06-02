@@ -17,13 +17,11 @@ on:
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 权限
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 允许一次只有一个部署任务
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -37,7 +35,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        # version 自动从 package.json 的 packageManager 字段读取
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,10 +56,13 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Output deployment URL
-        run: |
-          echo "🚀 文档已部署至：${{ steps.deployment.outputs.page_url }}"
