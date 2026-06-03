@@ -88,6 +88,9 @@ function handleCurrentChange(val: number) {
 
 <style lang="scss" scoped>
 .pagination-container {
+  display: flow-root;
+  width: 100%;
+
   .el-pagination {
     float: v-bind('props.align');
   }

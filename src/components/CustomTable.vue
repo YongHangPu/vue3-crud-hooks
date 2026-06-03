@@ -404,19 +404,12 @@ defineExpose({
   margin-top: 20px;
 }
 
-/* 操作列按钮样式优化 */
-.custom-table-container :deep(.el-table__cell) {
-  .el-link + .el-link {
-    margin-left: 8px;
-  }
-
-  .el-button + .el-button {
-    margin-left: 8px;
-  }
-
-  .el-link + .el-button,
-  .el-button + .el-link {
-    margin-left: 8px;
-  }
+/* 操作列按钮间距 */
+/* 注意：使用平铺选择器而非 CSS 嵌套，确保在未配置 postcss-nesting 的构建中也能生效 */
+.custom-table-container :deep(.el-table__cell .el-link + .el-link),
+.custom-table-container :deep(.el-table__cell .el-button + .el-button),
+.custom-table-container :deep(.el-table__cell .el-link + .el-button),
+.custom-table-container :deep(.el-table__cell .el-button + .el-link) {
+  margin-left: 8px;
 }
 </style>

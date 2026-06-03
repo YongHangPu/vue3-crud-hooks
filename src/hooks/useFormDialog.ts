@@ -26,14 +26,20 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
   /**
    * 深拷贝辅助函数
    * @description 优先使用 structuredClone，降级到 JSON 序列化
-   * @param obj 需要拷贝的对象
+   * @param obj 需要拷贝的对象（如果传入 Vue Proxy，先 toRaw 解包）
    * @returns 深拷贝后的对象
    */
   const deepClone = (obj: any) => {
+    const raw = toRaw(obj)
     if (typeof structuredClone === 'function') {
-      return structuredClone(obj)
+      try {
+        return structuredClone(raw)
+      } catch {
+        // structuredClone 可能因 Proxy/Function/Symbol 等无法克隆的值而失败
+        return JSON.parse(JSON.stringify(raw))
+      }
     }
-    return JSON.parse(JSON.stringify(obj))
+    return JSON.parse(JSON.stringify(raw))
   }
 
   // 表单数据

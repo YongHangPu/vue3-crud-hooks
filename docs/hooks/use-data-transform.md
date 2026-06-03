@@ -1,122 +1,113 @@
 # useDataTransform
 
-`useDataTransform` 是一个用于处理常见数据转换场景的 Hook，特别适用于表单提交前的数据处理和获取详情后的数据回显。
+数据转换工具 Hook，提供 **数组↔字符串互转、时间范围拆分、空值清理、数字类型转换** 等常见数据格式处理函数。独立于 UI 库，可单独使用。
 
 ## 基础用法
 
 ```typescript
-import { useDataTransform } from 'vue3-crud-hooks'
+import { useDataTransform, deepCleanEmptyFields } from 'vue3-crud-hooks'
 
-const { 
-  arrayToString, 
-  stringToArray, 
-  processTimeRange, 
-  cleanEmptyFields 
+const {
+  arrayToString,
+  stringToArray,
+  processTimeRange,
+  cleanEmptyFields,
+  convertNumbers
 } = useDataTransform()
 ```
-
-## 功能特性
-
-### 1. 数组与字符串互转
-
-常用于处理多选框（Checkbox）数据。前端使用数组，后端通常存储为逗号分隔的字符串。
-
-```typescript
-// 提交前：['a', 'b'] -> 'a,b'
-const submitData = arrayToString(formData, ['tags', 'categories'])
-
-// 回显时：'a,b' -> ['a', 'b']
-const editData = stringToArray(backendData, ['tags', 'categories'])
-```
-
-### 2. 时间范围处理
-
-将日期范围选择器（DateRangePicker）的数组值拆分为后端需要的两个独立字段。
-
-```typescript
-// 原始数据
-const params = {
-  dateRange: ['2024-01-01', '2024-01-31']
-}
-
-// 默认转换：添加 begin/end 前缀
-// 结果: { beginDateRange: '2024-01-01', endDateRange: '2024-01-31' }
-const res1 = processTimeRange(params, 'dateRange')
-
-// 自定义后缀
-// 结果: { startCreateTime: '...', endCreateTime: '...' }
-const res2 = processTimeRange(params, 'createTime', 'CreateTime')
-
-// 完全自定义字段名
-// 结果: { startDate: '...', endDate: '...' }
-const res3 = processTimeRange(params, 'dateRange', { 
-  start: 'startDate', 
-  end: 'endDate' 
-})
-```
-
-### 3. 空值清理
-
-清理对象中的空字符串、`null` 和 `undefined`，常用于搜索表单提交前清理无效参数。
-
-```typescript
-// 浅层清理
-const params = { name: 'test', age: '', status: null }
-const cleanParams = cleanEmptyFields(params) 
-// 结果: { name: 'test' }
-
-// 深度清理 (支持嵌套对象和数组)
-import { deepCleanEmptyFields } from 'vue3-crud-hooks'
-const deepClean = deepCleanEmptyFields(nestedObj)
-```
-
-### 4. 数字转换
-
-将输入框的字符串数字转换为真正的 Number 类型。
-
-```typescript
-const data = { age: "18", price: "99.9" }
-const res = convertNumbers(data, ['age', 'price'])
-// 结果: { age: 18, price: 99.9 }
-```
-
-## 在线演示
-
-::: demo 包含所有数据转换功能的综合演示
-examples/use-data-transform/basic
-:::
 
 ## API 参考
 
 ### arrayToString(data, fields, separator?)
-*   **data**: 原始对象
-*   **fields**: 需要转换的字段名数组 `string[]`
-*   **separator**: 分隔符，默认为 `,`
-*   **returns**: 新对象（不改变原对象）
+
+将指定字段从数组转换为分隔符字符串。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `data` | `Record<string, any>` | — | 原始数据对象 |
+| `fields` | `string[]` | — | 要转换的字段名数组 |
+| `separator` | `string` | `','` | 分隔符 |
+
+```typescript
+arrayToString({ tags: ['Vue', 'React'] }, ['tags'])
+// → { tags: 'Vue,React' }
+```
 
 ### stringToArray(data, fields, separator?)
-*   **data**: 原始对象
-*   **fields**: 需要转换的字段名数组 `string[]`
-*   **separator**: 分隔符，默认为 `,`
-*   **returns**: 新对象
+
+将指定字段从分隔符字符串转换回数组。
+
+```typescript
+stringToArray({ tags: 'Vue,React' }, ['tags'])
+// → { tags: ['Vue', 'React'] }
+
+stringToArray({ tags: 'Vue|React' }, ['tags'], '|')
+// → { tags: ['Vue', 'React'] }
+```
 
 ### processTimeRange(params, timeField, fieldConfig?)
-*   **params**: 原始参数对象
-*   **timeField**: 时间范围字段名（值为数组）
-*   **fieldConfig**: 
-    *   `string`: 作为后缀，生成 `begin{Suffix}` 和 `end{Suffix}`
-    *   `{ start: string, end: string }`: 指定确切的开始和结束字段名
-    *   `undefined`: 默认生成 `begin{Field}` 和 `end{Field}`
+
+将时间范围数组 `[start, end]` 拆分为两个独立字段。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `params` | `Record<string, any>` | 参数对象 |
+| `timeField` | `string` | 时间范围字段名 |
+| `fieldConfig` | `string \| { start, end }` | 字段名配置 |
+
+**不传 fieldConfig**：默认 `begin{Field}` / `end{Field}`
+```typescript
+processTimeRange({ date: ['2024-01-01', '2024-01-31'] }, 'date')
+// → { beginDate: '2024-01-01', endDate: '2024-01-31' }
+```
+
+**传字符串**：拼接前缀
+```typescript
+processTimeRange({ t: ['a', 'b'] }, 't', 'Time')
+// → { beginTime: 'a', endTime: 'b' }
+```
+
+**传对象**：精确指定字段名
+```typescript
+processTimeRange({ t: ['a', 'b'] }, 't', { start: 'startAt', end: 'endAt' })
+// → { startAt: 'a', endAt: 'b' }
+```
 
 ### cleanEmptyFields(data, fields?)
-*   **data**: 原始数据
-*   **fields**: 指定清理的字段数组，不传则检查所有字段
-*   **returns**: 清理后的新对象
 
-### convertNumbers(data, fields)
-*   **data**: 原始数据
-*   **fields**: 需要转换为数字的字段数组
+移除值为 `''` / `null` / `undefined` 的字段。
+
+```typescript
+cleanEmptyFields({ name: 'Tom', age: '', desc: null })
+// → { name: 'Tom' }
+```
+
+不传 `fields` 时清理所有字段；传 `fields` 时仅清理指定字段。
 
 ### deepCleanEmptyFields(data)
-*   **data**: 任意数据（对象、数组等）
-*   **returns**: 递归清理后的数据
+
+递归清理嵌套对象和数组中的空值。
+
+```typescript
+deepCleanEmptyFields({
+  name: 'Project',
+  tags: ['', null, 'Vue'],
+  meta: { version: '1.0', author: '' }
+})
+// → { name: 'Project', tags: ['Vue'], meta: { version: '1.0' } }
+```
+
+### convertNumbers(data, fields)
+
+将指定字段从字符串转换为 `Number` 类型。
+
+```typescript
+convertNumbers({ age: '18', price: '99.9' }, ['age', 'price'])
+// → { age: 18, price: 99.9 }
+```
+
+## 在线演示
+
+::: preview
+demo-preview=../examples/use-data-transform/basic.vue
+:::

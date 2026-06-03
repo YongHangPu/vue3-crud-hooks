@@ -1,0 +1,65 @@
+/* 修复 VitePress 的 .vp-doc table 样式破坏 Element Plus el-table 布局的问题
+ *
+ * 问题：VitePress 的 .vp-doc table { display: block; margin: 20px 0; border-collapse: collapse }
+ * 被错误应用到 el-table 内部的 <table class="el-table__header"> 和 <table class="el-table__body"> 上，
+ * 导致：
+ *   - display: block → 破坏表格布局
+ *   - margin: 20px 0 → 在表头表格底部和表体表格顶部各加 20px 外边距，产生空行
+ *   - border-collapse: collapse → 覆盖 el-table 预期的 separate
+ *
+ * 修复：对 el-table 内部子表格恢复应有的样式
+ * 注意：不要设置 overflow，el-table 依赖内部 wrapper 的 overflow 裁剪来隐藏固定列背后的内容 */
+.vp-doc .el-table__header,
+.vp-doc .el-table__body,
+.vp-doc .el-table__footer {
+  display: table !important;
+  margin: 0 !important;
+  border-collapse: separate !important;
+}
+
+/* 确保分页内部的 <table> 不会被 .vp-doc table 样式影响 */
+.vp-doc .el-pagination table {
+  display: table;
+  margin: 0;
+  overflow: visible;
+  border-collapse: separate;
+}
+
+/* 恢复 el-table 行背景，防止 VitePress 的 .vp-doc tr 覆盖
+ * 注意：不要用 background: unset，否则固定列的 background: inherit 会继承到透明背景 */
+.vp-doc .el-table tr,
+.vp-doc .el-table th,
+.vp-doc .el-table td {
+  border: unset !important;
+}
+.vp-doc .el-table__body tr.el-table__row {
+  background-color: var(--el-bg-color) !important;
+}
+
+/* 分页容器清除浮动（库的 scoped CSS 在文档中因 scope ID 不匹配不生效） */
+.pagination-container {
+  display: flow-root;
+  width: 100%;
+}
+
+/* 操作列按钮间距 — 覆盖库的 scoped CSS（scope ID 在文档构建中可能不匹配） */
+.vp-doc .el-table__cell .el-link + .el-link,
+.vp-doc .el-table__cell .el-button + .el-button,
+.vp-doc .el-table__cell .el-link + .el-button,
+.vp-doc .el-table__cell .el-button + .el-link {
+  margin-left: 8px !important;
+}
+
+/* 暗色模式下 el-table 固定列/补丁背景修复
+ * Element Plus 暗色变量将 --el-fill-color-blank 设为 transparent，
+ * 且 el-table__fixed-right-patch 硬编码了 #fff。
+ * 这里确保固定列和补丁在所有主题下都有正确背景 */
+html.dark .vp-doc .el-table__body-wrapper tr td.el-table-fixed-column--left,
+html.dark .vp-doc .el-table__body-wrapper tr td.el-table-fixed-column--right,
+html.dark .vp-doc .el-table__header-wrapper tr th.el-table-fixed-column--left,
+html.dark .vp-doc .el-table__header-wrapper tr th.el-table-fixed-column--right {
+  background-color: var(--el-bg-color) !important;
+}
+html.dark .vp-doc .el-table__fixed-right-patch {
+  background: var(--el-bg-color) !important;
+}

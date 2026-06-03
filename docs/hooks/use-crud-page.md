@@ -1,321 +1,235 @@
 # useCrudPage
 
-集成表格展示、表单弹窗、数据转换等功能的综合性 Hook。它组合了 `useTablePage` 和 `useFormDialog` 的功能，提供了一站式的 CRUD 页面解决方案。
+一站式 CRUD 页面 Hook，整合 **列表查询、分页搜索、新增、编辑、删除、批量删除、数据导出** 全流程。内部组合 `useTablePage` + `useFormDialog` + `useDataTransform`。
 
 ## 基础用法
 
-通过 `useCrudPage` 可以快速构建具备列表展示、搜索、分页、新增、编辑、删除、批量删除等功能的 CRUD 页面。
+一个 Hook + `v-bind="tableBindings"` 即可完成完整 CRUD 页面。
 
 ::: preview 基础 CRUD 示例
-demo-preview=@examples/use-crud-page/basic.vue
+demo-preview=../examples/use-crud-page/basic.vue
 :::
 
-## 配置模式
+## API 参考
 
-`useCrudPage` 仅保留一套分层配置写法，配置固定分为五个核心部分：`apis`、`table`、`form`、`search` 和 `advanced`。
-
-### 1. apis - 接口配置
-
-定义 CRUD 所需的所有 API 接口。
+### 入参
 
 ```typescript
-const { ... } = useCrudPage({
-  apis: {
-    // 列表查询 (必填)
-    list: (params) => request.get('/api/list', { params }),
-
-    // 新增 (必填)
-    add: (data) => request.post('/api/add', data),
-
-    // 更新 (必填)
-    update: (data) => request.put('/api/update', data),
-
-    // 删除 (必填)
-    delete: (id) => request.delete(`/api/delete/${id}`),
-
-    // 批量删除 (可选)
-    batchDelete: (ids) => request.post('/api/batch-delete', { ids }),
-
-    // 获取详情 (可选)
-    // 如果不提供，编辑回显时将直接使用表格行数据
-    get: (id) => request.get(`/api/detail/${id}`),
-
-    // 导出 (可选)
-    export: ({ params }) => request.download('/api/export', params)
-  },
-  // ...
-})
+useCrudPage<T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 ```
 
-### 2. table - 表格配置
+### 返回值
 
-基于 `CustomTable` 组件的配置。
-
-```typescript
-const { ... } = useCrudPage({
-  table: {
-    // 响应数据中的字段映射
-    dataKey: 'rows', // 列表数据字段，默认 'rows'
-    totalKey: 'total', // 总数字段，默认 'total'
-
-    // 是否挂载时自动请求数据，默认 true
-    autoFetch: true,
-
-    // CustomTable 组件配置
-    config: {
-      selection: true, // 开启多选
-      index: { label: '#', width: 60, align: 'center' }, // 开启序号
-
-      // 列配置
-      columns: [
-        { prop: 'name', label: '名称', minWidth: 120 },
-        // 使用自定义插槽 (slotName)
-        { prop: 'status', label: '状态', width: 100, slotName: 'status' },
-        // 操作列 (type: 'action')
-        {
-          prop: 'action',
-          label: '操作',
-          type: 'action',
-          width: 150,
-          buttons: [
-            // 自动绑定 edit 事件
-            { event: 'edit', btnText: '编辑' },
-            // 自动绑定 delete 事件
-            { event: 'delete', btnText: '删除', type: 'danger' }
-          ]
-        }
-      ]
-    },
-
-    // 自定义操作列事件处理 (非 edit/delete 事件)
-    onCustomAction: (event, row, index) => {
-      if (event === 'view') {
-        console.log('查看详情', row)
-      }
-    }
-  }
-})
-```
-
-### 3. form - 表单配置
-
-控制新增/编辑弹窗的行为。
-
-```typescript
-const { ... } = useCrudPage({
-  form: {
-    // 表单初始数据 (必填)
-    initialData: {
-      name: '',
-      status: 1,
-      tags: []
-    },
-
-    // 表单校验规则 (Element Plus 格式)
-    rules: {
-      name: [{ required: true, message: '请输入名称' }]
-    },
-
-    // 提交成功后弹窗关闭时的回调 (默认会自动刷新列表)
-    onAfterSubmit: () => {
-      ElMessage.success('操作成功')
-    },
-
-    // 提交前的数据转换 (手动模式)
-    beforeSubmit: (data) => {
-      return { ...data, status: data.status ? 1 : 0 }
-    }
-  }
-})
-```
-
-### 4. search - 搜索配置
-
-管理顶部的搜索栏状态。
-
-```typescript
-const { ... } = useCrudPage({
-  search: {
-    // 搜索表单初始数据
-    initialData: {
-      keyword: '',
-      createTime: []
-    },
-
-    // 搜索前的参数处理 (例如格式化日期)
-    beforeSearch: (params) => {
-      // 注意：推荐使用 advanced.timeFields 自动处理时间
-      return params
-    }
-  }
-})
-```
-
-### 5. advanced - 高级配置
-
-集成了 `useDataTransform` 的自动化功能。
-
-```typescript
-const { ... } = useCrudPage({
-  advanced: {
-    // 数组字段自动转换
-    // 提交时：['Vue', 'React'] -> "Vue,React"
-    // 回显时： "Vue,React" -> ['Vue', 'React']
-    arrayFields: ['tags', 'roles'],
-
-    // 时间范围字段自动拆分
-    // 搜索/提交时：{ date: ['2024-01-01', '2024-01-31'] }
-    // -> { startDate: '2024-01-01', endDate: '2024-01-31' }
-    timeFields: [
-      // 方式 1: 默认生成 beginDate/endDate
-      { field: 'date' },
-      // 方式 2: 指定前后缀
-      { field: 'createTime', prefix: { start: 'start', end: 'end' } }
-    ],
-
-    // 删除/批量删除成功回调
-    onDeleteSuccess: () => console.log('删除成功'),
-    onBatchDeleteSuccess: () => console.log('批量删除成功')
-  }
-})
-```
-
-### 综合配置示例
-
-以下是一个包含所有配置项的简化配置示例：
-
-```typescript
-const {
-  // 1. 表格相关状态
-  tableData,       // 表格列表数据
-  total,           // 数据总条数
-  loading,         // 表格加载 loading
-  pageInfo,        // 分页信息 { pageNum, pageSize }
-  selection,       // 当前选中的行数组
-
-  // 2. 表单相关状态
-  dialogVisible,   // 弹窗显示状态
-  dialogMode,      // 弹窗模式：'add' | 'edit' | 'view'
-  formData,        // 表单数据对象
-  submitLoading,   // 提交按钮 loading
-
-  // 3. 搜索相关状态
-  searchParams,    // 搜索表单数据
-
-  // 4. 操作方法
-  getTableData,    // 手动刷新列表
-  handleSearch,    // 触发搜索 (重置页码为1)
-  handleReset,     // 重置搜索条件
-  openDialog,      // 打开弹窗：openDialog('add') 或 openDialog('edit', row)
-  handleDelete,    // 处理单条删除：handleDelete(row)
-  handleBatchDelete, // 处理批量删除
-  handleExport,    // 触发导出
-  submitForm,      // 提交表单
-
-  // 5. 绑定到组件的属性 (v-bind 即可，无需分开)
-  tableBindings,      // 直接绑定到 <CustomTable v-bind="tableBindings">
-  handleDialogClose   // 弹窗关闭事件，绑定到 <el-dialog @close="handleDialogClose">
-} = useCrudPage({
-  // 1. 接口配置 (apis)
-  apis: {
-    list: api.getList,         // 列表接口：需返回 { rows: [], total: 100 } 格式
-    add: api.add,              // 新增接口
-    update: api.update,        // 更新接口
-    delete: api.delete,        // 删除接口
-    batchDelete: api.batchDelete, // 批量删除接口 (可选)
-    export: api.export         // 导出接口 (可选)
-  },
-
-  // 2. 表格配置 (table)
-  table: {
-    dataKey: 'rows',           // 列表数据在接口响应中的字段名，默认为 'rows'
-    config: {
-      selection: true,         // 开启多选框列
-      columns: [
-        { prop: 'name', label: '名称' }, // 普通文本列
-        { prop: 'action', label: '操作', type: 'action', buttons: [
-           // 操作列按钮配置
-           { event: 'edit', btnText: '编辑' }, // 触发编辑弹窗
-           { event: 'delete', btnText: '删除', type: 'danger' } // 触发删除确认
-        ] }
-      ]
-    }
-  },
-
-  // 3. 表单配置 (form)
-  form: {
-    // 弹窗表单的初始数据结构
-    initialData: { name: '', tags: [] },
-    // 表单校验规则 (Element Plus 格式)
-    rules: { name: [{ required: true }] },
-    // 提交成功后弹窗关闭时的回调
-    onAfterSubmit: () => ElMessage.success('操作成功')
-  },
-
-  // 4. 搜索配置 (search)
-  search: {
-    // 搜索表单的初始数据结构
-    initialData: { keyword: '' }
-  },
-
-  // 5. 高级配置 (advanced)
-  advanced: {
-    // 指定需要自动转换格式的字段 (数组 <-> 逗号分隔字符串)
-    arrayFields: ['tags']
-  }
-})
-```
-
-## 高级用法示例
-
-该示例展示了：
-*   **数据自动转换**：数组转字符串 (`arrayFields`)、时间范围拆分 (`timeFields`)。
-*   **自定义表格列**：使用插槽自定义状态和标签展示。
-*   **复杂搜索与表单联动**。
-
-::: preview 包含数据转换与自定义列的综合示例
-demo-preview=@examples/use-crud-page/advanced.vue
-:::
-
-## 返回值详解
-
-Hook 返回一个包含表格状态、表单状态和操作方法的对象。
-
-### 表格相关
-
-| 属性/方法 | 类型 | 说明 |
-| --- | --- | --- |
-| `tableData` | `Ref<any[]>` | 表格数据列表 |
-| `total` | `Ref<number>` | 数据总条数 |
+| 返回值 | 类型 | 说明 |
+|-------|------|------|
+| **`tableBindings`** | `ComputedRef` | ⭐ **一键绑定到 `<CustomTable v-bind="tableBindings">`** |
+| `tableData` | `Ref<T[]>` | 表格数据 |
 | `loading` | `Ref<boolean>` | 表格加载状态 |
-| `pageInfo` | `Reactive` | 分页信息 `{ pageNum, pageSize }` |
-| `searchParams` | `Reactive` | 搜索表单数据 |
-| `selection` | `Ref<any[]>` | 当前选中的行数组 |
-| `tableConfig` | `Computed` | 计算后的表格配置，传给 CustomTable |
-| `tableEventHandlers` | `Object` | 包含 `onSelectionChange`, `onPagination`, `onAction` 等事件处理 |
-| `tableBindings` | `Computed` | 含 config/data/loading 和所有事件处理器，v-bind 到 CustomTable |
-| `getTableData` | `Function` | 手动触发列表刷新 |
-| `handleSearch` | `Function` | 触发搜索（重置页码为1） |
-| `handleReset` | `Function` | 重置搜索条件 |
-| `handleDelete` | `Function` | 处理单条删除 |
-| `handleBatchDelete` | `Function` | 处理批量删除 |
-| `handleExport` | `Function` | 触发导出 |
+| `deleteLoading` | `Ref<boolean>` | 删除操作加载状态 |
+| `pageInfo` | `Reactive` | `{ pageNum, pageSize, total }` 分页信息 |
+| `searchParams` | `Reactive` | 搜索表单数据（响应式，支持 v-model） |
+| `selectedRows` | `Ref<T[]>` | 当前选中的行数据 |
+| `selectedIds` | `ComputedRef` | 选中行 ID 列表（基于 `idKey` 提取） |
+| `getTableData` | `() => Promise<void>` | 手动刷新列表 |
+| `handleSearch` | `() => void` | 搜索（页码重置为 1 后刷新） |
+| `handleReset` | `() => void` | 重置搜索条件并刷新 |
+| `handleDelete` | `(row: T) => Promise<void>` | 弹出确认框后删除 |
+| `handleBatchDelete` | `() => Promise<void>` | 批量删除选中行 |
+| `handleExport` | `(options?) => void` | 导出数据（自动合并搜索参数与选中 ID） |
+| `dialogVisible` | `Ref<boolean>` | 弹窗显示状态（支持 v-model） |
+| `dialogMode` | `Ref<'add' \| 'edit'>` | 弹窗模式 |
+| `formData` | `Ref<T>` | 表单数据 |
+| `formRef` | `Ref` | el-form 引用（需手动绑定） |
+| `submitLoading` | `Ref<boolean>` | 提交按钮加载状态 |
+| `formLoading` | `Ref<boolean>` | 编辑回显加载状态 |
+| `openDialog` | `(mode, row?) => void` | 打开弹窗 |
+| `submitForm` | `() => Promise<void>` | 提交表单（验证 + 转换 + API） |
+| `resetForm` | `() => void` | 重置表单 |
+| `handleDialogClose` | `() => void` | 关闭弹窗 |
 
-### 表单相关
+### 配置项：`CrudPageConfig<T>`
 
-| 属性/方法 | 类型 | 说明 |
-| --- | --- | --- |
-| `dialogVisible` | `Ref<boolean>` | 弹窗是否可见 |
-| `dialogMode` | `Ref<string>` | 模式：'add', 'edit', 'view' |
-| `formData` | `Ref<T>` | 表单数据对象 |
-| `submitLoading` | `Ref<boolean>` | 提交按钮 loading |
-| `openDialog` | `Function` | 打开弹窗：`openDialog('add')` 或 `openDialog('edit', row)` |
-| `handleDialogClose` | `Function` | 关闭弹窗 |
-| `submitForm` | `Function` | 提交表单 |
+#### `apis` — API 接口配置
 
-### 辅助方法
+| 属性 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `list` | `(params) => Promise<any>` | ✅ | 列表查询接口 |
+| `add` | `(data: T) => Promise<any>` | ✅ | 新增接口 |
+| `update` | `(data: T) => Promise<any>` | ✅ | 编辑接口 |
+| `delete` | `(id) => Promise<any>` | — | 删除接口（未提供时 handleDelete 不可用） |
+| `batchDelete` | `(ids) => Promise<any>` | — | 批量删除接口 |
+| `get` | `(id) => Promise<any>` | — | 获取详情接口（编辑回显示调用） |
+| `export` | `(options) => Promise<any>` | — | 导出接口 |
 
-| 属性/方法 | 类型 | 说明 |
-| --- | --- | --- |
-| `arrayToString` | `Function` | 工具：数组转字符串 |
-| `stringToArray` | `Function` | 工具：字符串转数组 |
+#### `table` — 表格配置
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `config` | `CustomTableConfig` | — | CustomTable 组件配置（列定义、序号、分页等） |
+| `idKey` | `string` | `'id'` | 数据主键字段名 |
+| `dataKey` | `string` | `'rows'` | 接口响应中列表数据的字段名 |
+| `totalKey` | `string` | `'total'` | 接口响应中总数字段名 |
+| `autoFetch` | `boolean` | `true` | 是否在挂载时自动请求数据 |
+| `autoDetect` | `boolean` | `true` | 是否自动检测响应数据结构 |
+| `exportUrl` | `string` | — | 导出下载 URL（未配置 export 接口时使用） |
+| `onCustomAction` | `(event, row, index) => void` | — | 自定义事件处理器 |
+
+#### `form` — 表单配置
+
+| 属性 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `initialData` | `T` | ✅ | 表单初始数据结构 |
+| `rules` | `any` | — | Element Plus 表单校验规则 |
+| `beforeSubmit` | `(data: T) => any` | — | 提交前数据转换 |
+| `afterGet` | `(data: any) => T` | — | 获取详情后数据转换 |
+| `onAfterSubmit` | `() => void` | — | 提交成功后回调（默认自动刷新列表） |
+| `onSubmitSuccess` | `(res, mode, formData) => void` | — | API 调用成功后的回调 |
+
+#### `search` — 搜索配置
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `initialData` | `Record<string, any>` | 搜索表单初始值 |
+| `beforeSearch` | `(params) => any` | 搜索前参数转换，返回 `false` 阻止请求 |
+
+#### `advanced` — 高级配置
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `arrayFields` | `string[]` | 数组字段（前端 `string[]` ↔ 后端逗号字符串自动转换） |
+| `timeFields` | `Array<{ field, prefix }>` | 时间范围字段（自动拆分为 `start`/`end` 两个参数） |
+| `messageApi` | `Partial<MessageApi>` | 自定义消息提示 API |
+| `onDeleteSuccess` | `(row) => void` | 单行删除成功回调 |
+| `onBatchDeleteSuccess` | `(rows, isDeleteAll) => void` | 批量删除成功回调 |
+
+## 配置详解
+
+### apis：接口定义
+
+CrudPage 围绕五个核心接口展开，全部通过 `apis` 配置：
+
+```typescript
+useCrudPage({
+  apis: {
+    // 列表查询：接收 { pageNum, pageSize, ...searchParams } 返回 { rows, total }
+    list: (params) => request.get('/api/users', { params }),
+    // 新增：接收表单数据
+    add: (data) => request.post('/api/users', data),
+    // 编辑：接收表单数据
+    update: (data) => request.put(`/api/users/${data.id}`, data),
+    // 删除：接收主键值
+    delete: (id) => request.delete(`/api/users/${id}`),
+    // 可选：批量删除
+    batchDelete: (ids) => request.post('/api/users/batch-delete', { ids }),
+    // 可选：获取详情（编辑时回显）
+    get: (id) => request.get(`/api/users/${id}`),
+    // 可选：导出
+    export: ({ params }) => request.download('/api/users/export', params),
+  }
+})
+```
+
+### table.config：CustomTable 列配置
+
+通过 `table.config` 配置表格的列、序号、多选、分页：
+
+```typescript
+useCrudPage({
+  table: {
+    config: {
+      // 多选列
+      selection: true,
+      // 序号列（自动翻页连续序号）
+      index: { label: '#', width: 60, align: 'center' },
+      // 列定义
+      columns: [
+        // 普通列
+        { prop: 'name', label: '名称', minWidth: 120 },
+        // 使用插槽的自定义列
+        { prop: 'status', label: '状态', slotName: 'status' },
+        // 操作列（内置按钮事件）
+        {
+          type: 'action',
+          label: '操作',
+          width: 200,
+          buttons: [
+            { event: 'edit', btnText: '编辑', type: 'primary' },
+            { event: 'delete', btnText: '删除', type: 'danger' },
+          ],
+        },
+      ],
+      // 分页配置
+      pagination: { currentPage: 1, pageSize: 20 },
+    },
+  },
+})
+```
+
+操作列的 `buttons` 按钮支持以下属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `event` | `string` | 事件名：`edit`/`delete` 自动绑定对应操作，其他触发 `onCustomAction` |
+| `btnText` | `string` | 按钮文本 |
+| `btnType` | `'link' \| 'button'` | 按钮展现类型 |
+| `type` | `'primary' \| 'danger' \| ...` | 按钮样式 |
+| `disabled` | `boolean \| (row) => boolean` | 是否禁用 |
+| `visible` | `(row) => boolean` | 是否可见 |
+| `props` | `Record<string, any>` | 其他透传到 el-button / el-link 的属性 |
+
+### form：表单初始数据与校验
+
+```typescript
+useCrudPage({
+  form: {
+    // 必须提供初始数据结构
+    initialData: { name: '', status: 1, tags: [] },
+    // Element Plus 校验规则
+    rules: {
+      name: [{ required: true, message: '请输入名称' }],
+    },
+    // 提交前转换（用于数据格式化）
+    beforeSubmit: (data) => ({
+      ...data,
+      status: data.status ? 1 : 0,
+    }),
+  },
+})
+```
+
+### search：搜索配置
+
+```typescript
+useCrudPage({
+  search: {
+    // 搜索栏初始值
+    initialData: { keyword: '', status: undefined, createTime: [] },
+    // 搜索前参数处理
+    beforeSearch: (params) => {
+      if (!params.keyword) delete params.keyword
+      return params
+    },
+  },
+})
+```
+
+`searchParams` 是响应式对象，可直接通过 `v-model` 绑定到搜索表单。
+
+### advanced：数据自动转换
+
+**数组字段自动转换**：
+
+当 `arrayFields: ['tags']` 配置后：
+- 搜索时：`{ tags: ['Vue', 'React'] }` → `{ tags: 'Vue,React' }`
+- 编辑回显时：后端返回 `{ tags: 'Vue,React' }` → 表单中 `{ tags: ['Vue', 'React'] }`
+
+**时间范围自动拆分**：
+
+当 `timeFields: [{ field: 'createTime', prefix: { start: 'startTime', end: 'endTime' } }]` 配置后：
+- 搜索时：`{ createTime: ['2024-01-01', '2024-01-31'] }` → `{ startTime: '2024-01-01', endTime: '2024-01-31' }`
+
+## 高级示例
+
+::: preview 包含数据转换、时间范围、导出的综合示例
+demo-preview=../examples/use-crud-page/advanced.vue
+:::

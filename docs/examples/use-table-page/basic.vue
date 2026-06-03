@@ -1,31 +1,15 @@
 <template>
-  <div class="use-table-page-basic">
-    <!-- 搜索区域 -->
+  <div class="demo-container">
+    <!-- 搜索栏 -->
     <div class="search-area">
-      <el-form :inline="true" :model="searchParams">
-        <el-form-item label="姓名">
-          <el-input v-model="searchParams.name" placeholder="请输入姓名" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+      <el-input v-model="searchParams.name" placeholder="姓名" clearable style="width: 160px" />
+      <el-button type="primary" @click="handleSearch">搜索</el-button>
+      <el-button @click="handleReset">重置</el-button>
+      <el-button type="danger" :disabled="!selectedRows.length" @click="handleBatchDelete">批量删除</el-button>
     </div>
 
-    <!-- 操作按钮 -->
-    <div class="action-area" style="margin-bottom: 16px;">
-      <el-button type="danger" :disabled="!selection.length" @click="handleBatchDelete">批量删除</el-button>
-    </div>
-
-    <!-- 表格组件 -->
-    <CustomTable
-      v-if="tableConfig"
-      :config="tableConfig"
-      :data="tableData"
-      :loading="loading"
-      v-bind="tableEventHandlers"
-    />
+    <!-- 表格：v-bind 一键绑定 -->
+    <CustomTable v-bind="tableBindings" />
   </div>
 </template>
 
@@ -33,62 +17,38 @@
 import { useTablePage, CustomTable } from 'vue3-crud-hooks'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-// 模拟API接口
-const mockApi = (params: any) => {
-  console.log('API请求参数:', params)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        code: 200,
-        msg: 'success',
-        data: {
-          total: 100,
-          rows: Array.from({ length: params.pageSize }).map((_, index) => ({
-            id: (params.pageNum - 1) * params.pageSize + index + 1,
-            name: `用户 ${(params.pageNum - 1) * params.pageSize + index + 1}`,
-            age: Math.floor(Math.random() * 60) + 18,
-            address: `北京市朝阳区第 ${index + 1} 号院`
-          }))
-        }
-      })
-    }, 500)
-  })
-}
+// 模拟列表接口
+const fetchList = (params: any) => new Promise<any>((resolve) => {
+  setTimeout(() => {
+    const list = Array.from({ length: params.pageSize }).map((_, i) => ({
+      id: (params.pageNum - 1) * params.pageSize + i + 1,
+      name: `用户 ${(params.pageNum - 1) * params.pageSize + i + 1}`,
+      age: Math.floor(Math.random() * 40) + 20,
+      address: `地址 ${i + 1}`,
+    }))
+    resolve({ rows: list, total: 58 })
+  }, 400)
+})
 
-// 模拟删除接口
-const deleteApi = (id: any) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ code: 200, msg: '删除成功' })
-    }, 500)
-  })
-}
+const deleteItem = (id: number) => new Promise((resolve) => {
+  setTimeout(() => resolve({ msg: '删除成功' }), 300)
+})
 
-// 模拟批量删除接口
-const batchDeleteApi = (ids: any[]) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ code: 200, msg: '批量删除成功' })
-    }, 500)
-  })
-}
+const batchDeleteItems = (ids: number[]) => new Promise((resolve) => {
+  setTimeout(() => resolve({ msg: '批量删除成功' }), 300)
+})
 
-// 使用 useTablePage Hook
 const {
-  tableData,
-  loading,
+  tableBindings,
   searchParams,
-  selection,
-  tableConfig,
-  tableEventHandlers,
+  selectedRows,
   handleSearch,
   handleReset,
-  handleBatchDelete
+  handleBatchDelete,
 } = useTablePage(
-  mockApi,
-  { name: '' }, // 初始搜索条件
+  fetchList,
+  { name: '' },
   {
-    // 表格配置
     customTableConfig: {
       selection: true,
       index: { label: '序号', width: 60 },
@@ -97,38 +57,35 @@ const {
         { prop: 'age', label: '年龄', width: 100 },
         { prop: 'address', label: '地址' },
         {
+          type: 'action',
           label: '操作',
-          width: 150,
+          width: 200,
           fixed: 'right',
-          actions: [
-            {
-              label: '删除',
-              type: 'danger',
-              event: 'delete'
-            }
-          ]
-        }
-      ]
+          buttons: [
+            { event: 'view', btnText: '查看', type: 'primary' },
+            { event: 'delete', btnText: '删除', btnType: 'button', type: 'danger', props: { size: 'small', plain: true } },
+          ],
+        },
+      ],
+      // 自定义事件（如 view）通过 onCustomAction 处理
+      onCustomAction: (event, row) => {
+        if (event === 'view') ElMessage.info(`查看: ${row.name}`)
+      },
     },
-    // 消息提示配置
     messageApi: {
       success: (msg) => ElMessage.success(msg),
       warning: (msg) => ElMessage.warning(msg),
       error: (msg) => ElMessage.error(msg),
-      confirm: (msg) => ElMessageBox.confirm(msg, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
-    }
+      confirm: (msg) => ElMessageBox.confirm(msg, '提示', {
+        confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning',
+      }),
+    },
   },
-  {
-    // 删除配置
-    deleteApi,
-    batchDeleteApi,
-    idKey: 'id'
-  }
+  { deleteApi: deleteItem, batchDeleteApi: batchDeleteItems, idKey: 'id' },
 )
 </script>
 
 <style scoped>
-.use-table-page-basic {
-  width: 100%;
-}
+.demo-container { padding: 10px; }
+.search-area { margin-bottom: 16px; display: flex; gap: 10px; }
 </style>

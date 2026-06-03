@@ -1,3 +1,4 @@
+import { componentPreview, containerPreview } from '@vitepress-demo-preview/plugin'
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
@@ -6,6 +7,13 @@ export default defineConfig({
   description: '基于 Vue 3 和 Element Plus 的 CRUD 工具库',
   lastUpdated: true,
 
+  markdown: {
+    config(md) {
+      md.use(componentPreview)
+      md.use(containerPreview)
+    },
+  },
+
   themeConfig: {
     logo: false,
 
@@ -13,12 +21,20 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '架构', link: '/architecture' },
       {
-        text: 'API',
+        text: 'Hooks',
         items: [
           { text: 'useCrudPage', link: '/hooks/use-crud-page' },
           { text: 'useTablePage', link: '/hooks/use-table-page' },
           { text: 'useFormDialog', link: '/hooks/use-form-dialog' },
           { text: 'useDataTransform', link: '/hooks/use-data-transform' },
+          { text: 'useMessage', link: '/hooks/use-message' },
+        ]
+      },
+      {
+        text: '组件',
+        items: [
+          { text: 'CustomTable', link: '/components/custom-table' },
+          { text: 'Pagination', link: '/components/pagination' },
         ]
       },
       {
@@ -42,8 +58,16 @@ export default defineConfig({
           { text: 'useTablePage（列表管理）', link: '/hooks/use-table-page' },
           { text: 'useFormDialog（表单弹窗）', link: '/hooks/use-form-dialog' },
           { text: 'useDataTransform（数据转换）', link: '/hooks/use-data-transform' },
+          { text: 'useMessage（消息提示）', link: '/hooks/use-message' },
         ]
-      }
+      },
+      {
+        text: '组件',
+        items: [
+          { text: 'CustomTable', link: '/components/custom-table' },
+          { text: 'Pagination', link: '/components/pagination' },
+        ]
+      },
     ],
 
     socialLinks: [
