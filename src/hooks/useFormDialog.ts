@@ -23,7 +23,12 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
   // 表单数据加载状态（编辑时获取数据）
   const formLoading = ref(false)
 
-  // 深拷贝辅助函数
+  /**
+   * 深拷贝辅助函数
+   * @description 优先使用 structuredClone，降级到 JSON 序列化
+   * @param obj 需要拷贝的对象
+   * @returns 深拷贝后的对象
+   */
   const deepClone = (obj: any) => {
     if (typeof structuredClone === 'function') {
       return structuredClone(obj)
@@ -61,6 +66,8 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
             formData.value = deepClone(data)
           } else {
             showMessage.error(`获取数据失败: ${err}`)
+            // 获取数据失败时关闭弹窗，避免展示空白表单
+            dialogVisible.value = false
           }
         } finally {
           formLoading.value = false
@@ -117,7 +124,11 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
 
       // 关闭弹窗并执行通用成功回调
       handleDialogClose()
-      config.onAfterSubmit?.()
+      try {
+        config.onAfterSubmit?.()
+      } catch (callbackError) {
+        console.error('提交成功回调执行失败:', callbackError)
+      }
     } finally {
       submitLoading.value = false
     }
@@ -143,16 +154,28 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     dialogVisible.value = false
   }
 
+  /**
+   * @property dialogVisible 弹窗显示状态
+   * @property dialogMode 弹窗模式 'add' | 'edit'
+   * @property formRef 表单组件引用（需手动绑定到 el-form）
+   * @property submitLoading 提交操作加载状态
+   * @property formLoading 表单数据加载状态（编辑回显时）
+   * @property formData 表单数据
+   * @property openDialog 打开弹窗
+   * @property submitForm 提交表单
+   * @property resetForm 重置表单
+   * @property handleDialogClose 关闭弹窗
+   */
   return {
-    dialogVisible, // 弹窗显示状态
-    dialogMode, // 弹窗模式
-    formRef, // 表单引用
-    submitLoading, // 提交加载状态
-    formLoading, // 表单数据加载状态
-    formData, // 表单数据
-    openDialog, // 打开弹窗方法
-    submitForm, // 提交表单方法
-    resetForm, // 重置表单方法
-    handleDialogClose // 关闭弹窗方法
+    dialogVisible,
+    dialogMode,
+    formRef,
+    submitLoading,
+    formLoading,
+    formData,
+    openDialog,
+    submitForm,
+    resetForm,
+    handleDialogClose
   }
 }

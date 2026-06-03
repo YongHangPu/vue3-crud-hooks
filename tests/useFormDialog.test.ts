@@ -127,6 +127,64 @@ describe('useFormDialog', () => {
     expect(formRef.resetFields).toHaveBeenCalled()
   })
 
+  it('编辑模式下提交时调用 updateApi 并执行成功回调', async () => {
+    const updateApi = vi.fn().mockResolvedValue({ msg: '更新成功' })
+    const onSubmitSuccess = vi.fn()
+    const onAfterSubmit = vi.fn()
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { id: 0, name: '' },
+        addApi: vi.fn(),
+        updateApi,
+        onSubmitSuccess,
+        onAfterSubmit,
+        messageApi
+      })
+    )
+    const formRef = createFormRef()
+    hook.formRef.value = formRef
+    hook.dialogVisible.value = true
+    hook.dialogMode.value = 'edit'
+    hook.formData.value = { id: 1, name: 'Updated' }
+
+    await hook.submitForm()
+    await flushPromises()
+
+    expect(updateApi).toHaveBeenCalledWith({ id: 1, name: 'Updated' })
+    expect(messageApi.success).toHaveBeenCalledWith('更新成功')
+    expect(onSubmitSuccess).toHaveBeenCalledWith(
+      { msg: '更新成功' },
+      'edit',
+      { id: 1, name: 'Updated' }
+    )
+    expect(onAfterSubmit).toHaveBeenCalled()
+    expect(hook.dialogVisible.value).toBe(false)
+  })
+
+  it('提交 API 失败时提示错误且不关闭弹窗', async () => {
+    const addApi = vi.fn().mockRejectedValue(new Error('submit error'))
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { name: '' },
+        addApi,
+        updateApi: vi.fn(),
+        messageApi
+      })
+    )
+    const formRef = createFormRef()
+    hook.formRef.value = formRef
+    hook.dialogVisible.value = true
+    hook.formData.value = { name: 'Tom' }
+
+    await hook.submitForm()
+    await flushPromises()
+
+    expect(messageApi.error).toHaveBeenCalledWith('提交失败: Error: submit error')
+    expect(hook.dialogVisible.value).toBe(true)
+  })
+
   it('表单校验失败时不提交接口', async () => {
     const addApi = vi.fn()
     const hook = mountComposable(() =>

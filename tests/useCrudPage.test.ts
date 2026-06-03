@@ -21,6 +21,45 @@ describe('useCrudPage', () => {
     vi.restoreAllMocks()
   })
 
+  it('编辑提交时调用 updateApi 并执行 onSubmitSuccess 回调', async () => {
+    const updateApi = vi.fn().mockResolvedValue({ msg: '更新成功' })
+    const onSubmitSuccess = vi.fn()
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useCrudPage({
+        apis: {
+          list: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+          add: vi.fn(),
+          update: updateApi
+        },
+        form: {
+          initialData: { id: 0, name: '' },
+          onSubmitSuccess
+        },
+        table: {
+          autoFetch: false,
+          config: { columns: [] }
+        },
+        advanced: { messageApi }
+      })
+    )
+    hook.formRef.value = createFormRef()
+    hook.dialogVisible.value = true
+    hook.dialogMode.value = 'edit'
+    hook.formData.value = { id: 1, name: 'Updated' }
+
+    await hook.submitForm()
+    await flushPromises()
+
+    expect(updateApi).toHaveBeenCalledWith({ id: 1, name: 'Updated' })
+    expect(onSubmitSuccess).toHaveBeenCalledWith(
+      { msg: '更新成功' },
+      'edit',
+      { id: 1, name: 'Updated' }
+    )
+    expect(hook.dialogVisible.value).toBe(false)
+  })
+
   it('编辑事件触发后通过详情接口回显并自动转换数组字段', async () => {
     const getApi = vi.fn().mockResolvedValue({
       data: {
@@ -188,7 +227,7 @@ describe('useCrudPage', () => {
     expect(onCustomAction).toHaveBeenCalledWith('view', { id: 2 }, 1)
   })
 
-  it('详情接口失败时保留弹窗并提示错误', async () => {
+  it('详情接口失败时关闭弹窗并提示错误', async () => {
     const messageApi = createMessageApi()
     const getApi = vi.fn().mockRejectedValue(new Error('detail failed'))
 
@@ -218,7 +257,8 @@ describe('useCrudPage', () => {
     await hook.openDialog('edit', { id: 1 })
     await flushPromises()
 
-    expect(hook.dialogVisible.value).toBe(true)
+    // 获取数据失败后弹窗应关闭，避免展示空白表单
+    expect(hook.dialogVisible.value).toBe(false)
     expect(hook.formLoading.value).toBe(false)
     expect(messageApi.error).toHaveBeenCalledWith(expect.stringContaining('获取数据失败'))
   })

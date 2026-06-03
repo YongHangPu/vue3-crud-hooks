@@ -21,6 +21,11 @@ export const useTablePage = <T = any>(
   deleteConfig: DeleteConfig = {},
   exportConfig: ExportConfig = {}
 ): TablePageHook<T> => {
+  /**
+   * 创建默认导出函数（基于 URL 的下载链接方式）
+   * @param baseUrl 导出接口基础 URL
+   * @returns 导出函数
+   */
   const createDefaultExportFunction = (baseUrl: string) => {
     return ({ url, params, filename }: { url?: string; params: any; filename: string }) => {
       const exportUrl = url || baseUrl
@@ -34,12 +39,15 @@ export const useTablePage = <T = any>(
         return
       }
 
+      // 构建 URL 查询参数，过滤空值
       const search = new URLSearchParams()
       Object.entries(params || {}).forEach(([key, value]) => {
+        // 跳过空值
         if (value === undefined || value === null || value === '') {
           return
         }
 
+        // 数组参数展开为多个同名 key
         if (Array.isArray(value)) {
           value.forEach((item) => {
             search.append(key, String(item))
@@ -50,7 +58,13 @@ export const useTablePage = <T = any>(
         search.append(key, String(value))
       })
 
-      const downloadUrl = search.toString() ? `${exportUrl}${exportUrl.includes('?') ? '&' : '?'}${search.toString()}` : exportUrl
+      // 拼接下载 URL，已有查询参数时追加 &
+      const queryString = search.toString()
+      const downloadUrl = queryString
+        ? `${exportUrl}${exportUrl.includes('?') ? '&' : '?'}${queryString}`
+        : exportUrl
+
+      // 创建隐藏的 a 标签触发下载
       const link = document.createElement('a')
       link.href = downloadUrl
       link.download = filename
@@ -62,15 +76,16 @@ export const useTablePage = <T = any>(
     }
   }
 
+  // 默认配置：自动检测响应结构、自动获取数据
   const defaultConfig: Required<Pick<TablePageConfig, 'dataKey' | 'totalKey' | 'autoDetect' | 'autoFetch' | 'beforeSearch'>> = {
     dataKey: 'rows',
     totalKey: 'total',
-    autoDetect: true, // 默认开启自动检测
+    autoDetect: true,
     autoFetch: true,
     beforeSearch: (params) => params
   }
 
-  // 默认删除配置
+  // 默认删除配置：各接口默认抛出"未配置"错误
   const defaultDeleteConfig: Required<Omit<DeleteConfig, 'onDeleteSuccess' | 'onBatchDeleteSuccess'>> & {
     onDeleteSuccess?: (row: any) => void
     onBatchDeleteSuccess?: (rows: any[], isDeleteAll: boolean) => void
@@ -92,8 +107,8 @@ export const useTablePage = <T = any>(
     onBatchDeleteSuccess: undefined
   }
 
-  // 合并配置
-  // 过滤掉 config 中为 undefined 的属性，以免覆盖默认值
+  // ── 配置合并 ──
+  // 过滤掉 undefined 属性，避免覆盖默认值
   const validConfig = Object.keys(config).reduce((acc, key) => {
     const value = config[key as keyof TablePageConfig]
     if (value !== undefined) {
@@ -118,6 +133,7 @@ export const useTablePage = <T = any>(
     return acc
   }, {} as Record<string, any>)
 
+  // 用户配置合并到默认值上
   const finalConfig: TablePageConfig & typeof defaultConfig = { ...defaultConfig, ...validConfig }
   const finalDeleteConfig = { ...defaultDeleteConfig, ...validDeleteConfig }
 
@@ -128,7 +144,7 @@ export const useTablePage = <T = any>(
     idKey: 'id'
   }
 
-  // 合并导出配置
+  // 合并导出配置，若用户未提供 exportFunction 但有 exportUrl，则使用默认下载方式
   const finalExportConfig = { ...defaultExportConfig, ...validExportConfig }
 
   // 初始化数据转换工具
@@ -147,7 +163,11 @@ export const useTablePage = <T = any>(
   const loading = ref(false)
   // 删除操作加载状态
   const deleteLoading = ref(false)
-  // 获取初始分页配置
+  /**
+   * 获取初始分页配置
+   * @description 从 customTableConfig 中提取分页参数，或使用默认值
+   * @returns 初始页码和每页条数
+   */
   const getInitialPagination = () => {
     const paginationConfig = finalConfig.customTableConfig?.pagination
     if (typeof paginationConfig === 'object') {
@@ -329,6 +349,10 @@ export const useTablePage = <T = any>(
     getTableData()
   }
 
+  /**
+   * 动态更新表格列配置
+   * @param columns 新的列配置数组
+   */
   const setTableColumns = (columns: CustomTableConfig['columns']) => {
     if (finalConfig.customTableConfig) {
       finalConfig.customTableConfig.columns = columns
@@ -347,7 +371,6 @@ export const useTablePage = <T = any>(
   /**
    * 单个删除处理
    * @param row 要删除的数据行
-   * @param skipConfirm 是否跳过确认，默认为 false
    * @description 删除单条数据，支持确认提示和自动刷新
    */
   const handleDelete = async (row: any) => {
@@ -439,25 +462,23 @@ export const useTablePage = <T = any>(
   const tableConfig = computed(() => {
     const customConfig = finalConfig.customTableConfig
     if (!customConfig) {
+      // 未配置表格时返回 null，CustomTable 会安全降级
       return null
     }
 
-    // 判断是否有数据
+    // 判断是否有数据来决定是否展示分页
     const hasData = tableData.value && tableData.value.length > 0
     const totalCount = pageInfo.total || 0
-
-    // 只有在有数据或总数大于0时才显示分页
     const shouldShowPagination = hasData || totalCount > 0
 
-    // 获取分页配置，默认为 true
+    // 分页配置默认为 true（启用分页但用默认值）
     const paginationConfig = customConfig.pagination !== undefined ? customConfig.pagination : true
 
-    // 处理 index 配置，如果是对象且没有自定义 index 函数，则自动添加连续序号逻辑
+    // 索引列：自动注入翻页连续序号公式 (pageNum-1) * pageSize + index + 1
     let processedIndex = customConfig.index
     if (processedIndex) {
       processedIndex = {
         ...(typeof processedIndex === 'object' ? processedIndex : {}),
-        // 自动添加翻页连续序号逻辑
         index: (index: number) => {
           return (pageInfo.pageNum - 1) * pageInfo.pageSize + index + 1
         }
@@ -467,6 +488,7 @@ export const useTablePage = <T = any>(
     return {
       ...customConfig,
       index: processedIndex,
+      // 无数据或无分页配置时强制关闭分页
       pagination:
         shouldShowPagination && paginationConfig
           ? {
@@ -496,9 +518,9 @@ export const useTablePage = <T = any>(
      * 处理分页变化
      * @param pagination 分页信息
      */
-    onPagination: (pagination: { page: number; limit: number }) => {
-      pageInfo.pageNum = pagination.page
-      pageInfo.pageSize = pagination.limit
+    onPagination: (pagination: { currentPage: number; pageSize: number }) => {
+      pageInfo.pageNum = pagination.currentPage
+      pageInfo.pageSize = pagination.pageSize
       getTableData()
     },
 
@@ -581,31 +603,43 @@ export const useTablePage = <T = any>(
     }
   })
 
+  /**
+   * @property tableData 表格数据
+   * @property loading 数据加载状态
+   * @property deleteLoading 删除操作加载状态
+   * @property pageInfo 分页信息 { pageNum, pageSize, total }
+   * @property searchParams 搜索参数（响应式）
+   * @property selectedRows 选中的数据行
+   * @property selectedIds 选中的 ID 列表
+   * @property getTableData 获取表格数据
+   * @property handleSearch 搜索处理（重置页码后刷新）
+   * @property handleReset 重置搜索条件
+   * @property handlePageChange 页码改变处理
+   * @property handleSizeChange 每页条数改变处理
+   * @property handleSelectionChange 表格选择改变处理
+   * @property handleDelete 单个删除处理
+   * @property handleBatchDelete 批量删除处理
+   * @property handleExport 导出方法
+   * @property tableBindings 通过 v-bind 一键绑定到 CustomTable
+   * @property setTableColumns 动态更新列配置
+   */
   return {
-    // 数据状态
-    tableData, // 表格数据
-    loading, // 数据加载状态
-    deleteLoading, // 删除操作加载状态
-    pageInfo, // 分页信息
-    searchParams, // 搜索参数
-    selectedRows, // 选中的数据行
-    selectedIds, // 选中的ID列表
-
-    // 基础方法
-    getTableData, // 获取表格数据
-    handleSearch, // 搜索处理
-    handleReset, // 重置处理
-    handlePageChange, // 页码改变处理
-    handleSizeChange, // 每页条数改变处理
-
-    // 选择和删除方法
-    handleSelectionChange, // 表格选择改变处理
-    handleDelete, // 单个删除处理
-    handleBatchDelete, // 批量删除处理
-
-    handleExport, // 导出方法
-
-    // CustomTable 相关 — 使用 tableBindings 通过 v-bind 一键绑定
+    tableData,
+    loading,
+    deleteLoading,
+    pageInfo,
+    searchParams,
+    selectedRows,
+    selectedIds,
+    getTableData,
+    handleSearch,
+    handleReset,
+    handlePageChange,
+    handleSizeChange,
+    handleSelectionChange,
+    handleDelete,
+    handleBatchDelete,
+    handleExport,
     tableBindings,
     setTableColumns
   }

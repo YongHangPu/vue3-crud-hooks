@@ -21,8 +21,8 @@ import { scrollTo } from '@/utils/scroll-to';
 
 interface Props {
   total?: number;
-  page?: number;
-  limit?: number;
+  currentPage?: number;
+  pageSize?: number;
   pageSizes?: number[];
   pagerCount?: number;
   layout?: string;
@@ -35,8 +35,8 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   total: 0,
-  page: 1,
-  limit: 20,
+  currentPage: 1,
+  pageSize: 20,
   pageSizes: () => [10, 20, 30, 50],
   // 移动端页码按钮的数量端默认值5
   pagerCount: () => 7,
@@ -52,34 +52,34 @@ defineOptions({
   inheritAttrs: true
 });
 
-const emit = defineEmits(['update:page', 'update:limit', 'pagination']);
+const emit = defineEmits(['update:currentPage', 'update:pageSize', 'pagination']);
 const currentPage = computed({
   get() {
-    return props.page;
+    return props.currentPage;
   },
   set(val) {
-    emit('update:page', val);
+    emit('update:currentPage', val);
   }
 });
 const pageSize = computed({
   get() {
-    return props.limit;
+    return props.pageSize;
   },
   set(val) {
-    emit('update:limit', val);
+    emit('update:pageSize', val);
   }
 });
 function handleSizeChange(val: number) {
   if (currentPage.value * val > props.total) {
     currentPage.value = 1;
   }
-  emit('pagination', { page: currentPage.value, limit: val });
+  emit('pagination', { currentPage: currentPage.value, pageSize: val });
   if (props.autoScroll) {
     scrollTo(0, 800);
   }
 }
 function handleCurrentChange(val: number) {
-  emit('pagination', { page: val, limit: pageSize.value });
+  emit('pagination', { currentPage: val, pageSize: pageSize.value });
   if (props.autoScroll) {
     scrollTo(0, 800);
   }

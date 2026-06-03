@@ -15,23 +15,27 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
   const { arrayToString, stringToArray } = useDataTransform()
   const { apis, form, table, search, advanced = {} } = config
 
-  // 初始化表格页面 Hook
+  // ── 初始化表格 Hook ──
+  // 将 CrudPageConfig 的分层配置分拆到 useTablePage 的四个参数中
   const tablePageHook = useTablePage(
     apis.list,
     search?.initialData || {},
     {
+      // 表格配置
       dataKey: table.dataKey,
       totalKey: table.totalKey,
       autoDetect: table.autoDetect,
       autoFetch: table.autoFetch,
       beforeSearch: search?.beforeSearch,
       customTableConfig: table.config,
+      // 高级选项
       arrayFields: advanced.arrayFields,
       timeFields: advanced.timeFields,
       messageApi: advanced.messageApi,
       exportUrl: table.exportUrl
     },
     {
+      // 删除配置
       deleteApi: apis.delete,
       batchDeleteApi: apis.batchDelete,
       deleteAllApi: apis.deleteAll,
@@ -43,6 +47,7 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       onBatchDeleteSuccess: advanced.onBatchDeleteSuccess
     },
     {
+      // 导出配置
       exportFunction: apis.export,
       arrayFields: advanced.arrayFields,
       timeFields: advanced.timeFields,
@@ -50,7 +55,8 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     }
   )
 
-  // 初始化表单弹窗 Hook
+  // ── 初始化弹窗 Hook ──
+  // 将 apis.add/update/get 映射到 useFormDialog，并串联数据转换
   const formDialogHook = useFormDialog({
     initialFormData: form.initialData,
     idKey: table.idKey,
@@ -58,40 +64,34 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     updateApi: apis.update,
     getApi: apis.get,
     formRules: form.rules,
-    // 表单提交成功后自动刷新表格数据
+    // 提交成功后刷新列表 + 执行用户自定义 onAfterSubmit
     onAfterSubmit: () => {
       tablePageHook.getTableData()
       form.onAfterSubmit?.()
     },
-    // 传递自定义成功回调
     onSubmitSuccess: form.onSubmitSuccess,
     messageApi: advanced.messageApi,
+    // 链式数据转换：先处理 arrayFields，再执行用户的 beforeSubmit / afterGet
     dataTransform: {
-      // 提交前数据转换函数，用于在提交前对数据进行处理
       beforeSubmit: (data: T) => {
         let processed = data
-
-        // 处理数组字段转换
+        // 数组字段转逗号字符串（适配后端接收格式）
         if (advanced.arrayFields?.length) {
           processed = arrayToString(processed, advanced.arrayFields)
         }
-
-        // 调用自定义的 beforeSubmit 函数转换
+        // 执行用户自定义 beforeSubmit
         if (form.beforeSubmit) {
           processed = form.beforeSubmit(processed)
         }
         return processed
       },
-      // 获取后数据转换函数，用于在获取数据后对数据进行处理
       afterGet: (data: any) => {
         let processed = data
-
-        // 先调用自定义的 afterGet 转换
+        // 先执行用户自定义 afterGet
         if (form.afterGet) {
           processed = form.afterGet(processed)
         }
-
-        // 处理数组字段转换
+        // 逗号字符串转回数组（适配前端表单展示）
         if (advanced.arrayFields?.length) {
           processed = stringToArray(processed, advanced.arrayFields)
         }
@@ -122,12 +122,13 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
   }
 
   /**
-   * 处理 CustomTable 事件
-   * @description 扩展tablePageHook的事件处理器，添加编辑功能
+   * CustomTable 事件处理器集合
+   * @description 扩展 useTablePage 的事件处理器，在删除/编辑/自定义事件间路由
    */
-  // 从 tableBindings 中取原始事件处理器（含 onAction/onPagination/onSelectionChange）
   const tableEventHandlers = {
+    /** 转发选择事件到 useTablePage 处理器 */
     onSelectionChange: tablePageHook.tableBindings.value?.onSelectionChange ?? (() => {}),
+    /** 转发分页事件到 useTablePage 处理器 */
     onPagination: tablePageHook.tableBindings.value?.onPagination ?? (() => {}),
 
     /**
@@ -154,7 +155,10 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     }
   }
 
-  /** 可直接通过 v-bind="tableBindings" 绑定到 <CustomTable> 的完整属性集 */
+  /**
+   * 可直接通过 v-bind="tableBindings" 绑定到 <CustomTable> 的完整属性集
+   * @description 覆盖 useTablePage 的 tableBindings，集成弹窗编辑事件
+   */
   const tableBindings = computed(() => ({
     config: table.config ? tablePageHook.tableBindings.value?.config ?? null : null,
     data: tablePageHook.tableData.value,
@@ -172,14 +176,16 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     tablePageHook.handleExport(options)
   }
 
+  /**
+   * @property ...tablePageHook 所有表格相关状态和方法
+   * @property ...formDialogHook 所有弹窗相关状态和方法
+   * @property tableBindings CustomTable 一键绑定（集成了弹窗编辑功能）
+   * @property handleExport 导出方法
+   */
   return {
-    // 表格相关状态和方法
     ...tablePageHook,
-    // 表单相关状态和方法
     ...formDialogHook,
-    // CustomTable v-bind 一键绑定
     tableBindings,
-    // 导出方法
     handleExport
   }
 }

@@ -1,8 +1,8 @@
 <template>
-  <div class="custom-table-container" v-bind="$attrs">
+  <div class="custom-table-container" :class="containerClass" :style="containerStyle">
     <el-table
       ref="tableRef"
-      v-bind="tableProps"
+      v-bind="forwardedAttrs"
       :data="tableData"
       v-loading="loading"
       @selection-change="handleSelectionChange"
@@ -18,68 +18,69 @@
 
       <!-- 数据列 -->
       <template v-for="(column, index) in processedColumns" :key="index">
-        <!-- 1. 具有自定义插槽的列 -->
-        <el-table-column
-          v-if="!column.hidden && hasCustomSlot(column)"
-          v-bind="getColumnBindProps(column)"
-        >
-          <!-- 自定义表头 -->
-          <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="(getColumnSlotName(column) || `column-${index}`) + '-header'" :column="scope.column" :$index="scope.$index" />
-          </template>
-          <!-- 自定义内容 -->
-          <template #default="scope">
-            <template v-if="scope && scope.row != null">
-              <slot :name="getColumnSlotName(column) || `column-${index}`" :row="scope.row" :index="scope.$index" :column="column" />
+        <template v-if="!column.hidden">
+          <!-- 1. 具有自定义插槽的列 -->
+          <el-table-column
+            v-if="hasCustomSlot(column)"
+            v-bind="getColumnBindProps(column)"
+          >
+            <!-- 自定义表头 -->
+            <template #header="scope" v-if="hasHeaderSlot(column)">
+              <slot :name="(getColumnSlotName(column) || `column-${index}`) + '-header'" :column="scope.column" :$index="scope.$index" />
             </template>
-          </template>
-        </el-table-column>
-
-        <!-- 2. 操作列 -->
-        <el-table-column
-          v-else-if="!column.hidden && column.type === 'action'"
-          v-bind="getColumnBindProps(column)"
-        >
-          <!-- 自定义表头 -->
-          <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
-          </template>
-          <!-- 操作按钮 -->
-          <template #default="scope">
-            <slot name="action" :row="scope.row" :index="scope.$index">
-              <template v-for="(btn, btnIndex) in column.buttons" :key="btnIndex">
-                <!-- 根据按钮类型渲染不同的组件 -->
-                <el-link
-                  v-if="btn.btnType !== 'button'"
-                  v-bind="getButtonProps(btn, scope.row)"
-                  @click="handleAction(btn.event, scope.row, scope.$index)"
-                  v-show="isButtonVisible(btn, scope.row)"
-                >
-                  {{ btn.btnText }}
-                </el-link>
-                <el-button
-                  v-else
-                  v-bind="getButtonProps(btn, scope.row)"
-                  @click="handleAction(btn.event, scope.row, scope.$index)"
-                  v-show="isButtonVisible(btn, scope.row)"
-                >
-                  {{ btn.btnText }}
-                </el-button>
+            <!-- 自定义内容 -->
+            <template #default="scope">
+              <template v-if="scope && scope.row != null">
+                <slot :name="getColumnSlotName(column) || `column-${index}`" :row="scope.row" :index="scope.$index" :column="column" />
               </template>
-            </slot>
-          </template>
-        </el-table-column>
+            </template>
+          </el-table-column>
 
-        <!-- 3. 普通列 (使用默认渲染) -->
-        <el-table-column
-          v-else-if="!column.hidden"
-          v-bind="getColumnBindProps(column)"
-        >
-          <!-- 自定义表头 -->
-          <template #header="scope" v-if="hasHeaderSlot(column)">
-            <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
-          </template>
-        </el-table-column>
+          <!-- 2. 操作列 -->
+          <el-table-column
+            v-else-if="column.type === 'action'"
+            v-bind="getColumnBindProps(column)"
+          >
+            <!-- 自定义表头 -->
+            <template #header="scope" v-if="hasHeaderSlot(column)">
+              <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
+            </template>
+            <!-- 操作按钮 -->
+            <template #default="scope">
+              <slot name="action" :row="scope.row" :index="scope.$index">
+                <template v-for="(btn, btnIndex) in column.buttons" :key="btnIndex">
+                  <el-link
+                    v-if="btn.btnType !== 'button'"
+                    v-bind="getButtonProps(btn, scope.row)"
+                    @click="handleAction(btn.event, scope.row, scope.$index)"
+                    v-show="isButtonVisible(btn, scope.row)"
+                  >
+                    {{ btn.btnText }}
+                  </el-link>
+                  <el-button
+                    v-else
+                    v-bind="getButtonProps(btn, scope.row)"
+                    @click="handleAction(btn.event, scope.row, scope.$index)"
+                    v-show="isButtonVisible(btn, scope.row)"
+                  >
+                    {{ btn.btnText }}
+                  </el-button>
+                </template>
+              </slot>
+            </template>
+          </el-table-column>
+
+          <!-- 3. 普通列 (使用默认渲染) -->
+          <el-table-column
+            v-else
+            v-bind="getColumnBindProps(column)"
+          >
+            <!-- 自定义表头 -->
+            <template #header="scope" v-if="hasHeaderSlot(column)">
+              <slot :name="(getColumnSlotName(column) || 'column') + '-header'" :column="scope.column" :$index="scope.$index" />
+            </template>
+          </el-table-column>
+        </template>
       </template>
 
       <!-- 表尾 -->
@@ -98,122 +99,84 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, useSlots } from 'vue'
+import { ref, computed, useSlots, useAttrs } from 'vue'
 import { ElTable, ElTableColumn, ElLink, ElButton } from 'element-plus'
-import Pagination from './Pagination.vue'
 import type { TableProps } from 'element-plus'
 import type { TableColumnCtx } from 'element-plus/es/components/table/src/table-column/defaults'
-import type { } from 'lodash-unified' // 解决 Element Plus 类型推断导致的构建错误 (TS2742)
+// 空类型导入解决 Element Plus 导致的 TS2742 类型推断错误
+import type { } from 'lodash-unified'
+import Pagination from './Pagination.vue'
+import type { CustomTableConfig, TableButtonConfig } from '../types/table'
 /**
- * 操作按钮配置接口
- * @interface ActionButton
- * @property btnText 按钮文本
- * @property event 按钮事件名
- * @property btnType 按钮类型（'link' 或 'button'），默认为 'link'
- * @property type 按钮样式类型（'primary'、'danger'、'info'、'success' 等）
- * @property disabled 是否禁用（可以是布尔值或函数）
- * @property visible 是否可见（函数）
- * @property props 按钮额外属性
+ * 操作按钮配置（继承共享类型，强化 btnText 为必填）
  */
-interface ActionButton {
+interface ActionButton extends TableButtonConfig {
   btnText: string
-  event: string
-  btnType?: 'link' | 'button'
-  type?: string
-  disabled?: boolean | ((row: any) => boolean)
-  visible?: (row: any) => boolean
-  props?: Record<string, any>
-  [key: string]: any
 }
 
 /**
- * 列配置接口
- * @interface ColumnConfig
- * @extends Partial<TableColumnCtx<any>>
- * @property prop 列属性名
- * @property label 列标题
- * @property type 列类型
- * @property hidden 是否隐藏
- * @property buttons 操作按钮配置（仅当type为action时有效）
+ * 列配置（继承 Element Plus 原生列属性，获得 sortable/filters 等类型校验；
+ * slotName/buttons/hidden 为库扩展字段）
  */
 interface ColumnConfig extends Partial<TableColumnCtx<any>> {
-  prop?: string
-  label?: string
-  type?: 'default' | 'selection' | 'index' | 'expand' | 'action'
-  hidden?: boolean
+  /** 插槽名称，优先级高于 prop */
+  slotName?: string
+  /** 操作按钮配置（仅当 type 为 action 时有效） */
   buttons?: ActionButton[]
-  [key: string]: any
-}
-
-/**
- * 分页配置接口
- * @interface PaginationConfig
- * @property total 总条数
- * @property pageSize 每页条数
- * @property currentPage 当前页码
- */
-interface PaginationConfig {
-  total?: number
-  pageSize?: number
-  currentPage?: number
-  autoScroll?: boolean
-  [key: string]: any
-}
-
-/**
- * 表格配置接口
- * @interface TableConfig
- * @property selection 选择列配置
- * @property index 索引列配置
- * @property columns 列配置数组
- * @property pagination 分页配置
- */
-interface TableConfig {
-  selection?: boolean | object
-  index?: boolean | object
-  columns: ColumnConfig[]
-  pagination?: PaginationConfig | boolean
+  /** 是否隐藏该列 */
+  hidden?: boolean
   [key: string]: any
 }
 
 /**
  * 组件属性接口
  * @interface Props
- * @property config 表格配置
+ * @property config 表格配置（复用 types/table 中的 CustomTableConfig）
  * @property data 表格数据
  * @property props 表格属性
  * @property loading 加载状态
- * @property suffixName vitepress-demo-preview 注入的属性
- * @property absolutePath vitepress-demo-preview 注入的属性
- * @property relativePath vitepress-demo-preview 注入的属性
  */
 interface Props {
-  config: TableConfig | null
+  config: CustomTableConfig | null
   data: any[]
   props?: Partial<TableProps<any>>
   loading?: boolean
-  suffixName?: string
-  absolutePath?: string
-  relativePath?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   config: () => ({ columns: [] }),
   data: () => [],
   props: () => ({}),
-  loading: false,
-  suffixName: '',
-  absolutePath: '',
-  relativePath: ''
+  loading: false
 })
 
-// 允许属性继承，避免警告
+// 关闭属性继承，手动转发 el-table 原生属性
 defineOptions({
-  inheritAttrs: true
+  inheritAttrs: false
 })
 
 // 插槽
 const slots = useSlots()
+
+// 透传属性：提取 class/style 到容器层，其余转发给 el-table
+const attrs = useAttrs()
+const containerClass = computed(() => (attrs as Record<string, any>).class)
+const containerStyle = computed(() => (attrs as Record<string, any>).style)
+// 组件已声明的事件不转发到 el-table（避免重复触发）
+const EMIT_KEYS = new Set([
+  'onSelectionChange', 'onSortChange', 'onFilterChange',
+  'onPagination', 'onAction', 'onSizeChange', 'onCurrentChange'
+])
+// 合并 tableProps + 透传属性，仅用一个 v-bind 避免 Vue 模板编译冲突
+const forwardedAttrs = computed(() => {
+  const merged: Record<string, any> = { ...tableProps.value }
+  for (const key of Object.keys(attrs)) {
+    if (key !== 'class' && key !== 'style' && !EMIT_KEYS.has(key)) {
+      merged[key] = attrs[key]
+    }
+  }
+  return merged
+})
 
 // 表格引用
 const tableRef = ref<any>(null)
@@ -249,20 +212,17 @@ const processedColumns = computed<ColumnConfig[]>(() => {
  * @returns 分页组件属性
  */
 const paginationProps = computed(() => {
-  if (!props.config || typeof props.config.pagination === 'boolean') {
-    return {
-      total: 0,
-      page: 1,
-      limit: 10
-    }
+  if (!props.config) {
+    return { total: 0, currentPage: 1, pageSize: 10 }
   }
 
-  return {
-    total: props.config.pagination?.total || 0,
-    page: props.config.pagination?.currentPage || 1,
-    limit: props.config.pagination?.pageSize || 10,
-    ...props.config.pagination
+  const pagination = props.config.pagination
+  if (typeof pagination === 'boolean' || !pagination) {
+    return { total: 0, currentPage: 1, pageSize: 10 }
   }
+
+  // PaginationConfig 与 Pagination.vue 字段名已统一，直接透传
+  return pagination
 })
 
 /**
@@ -293,7 +253,7 @@ const emit = defineEmits<{
   (e: 'size-change', val: number): void
   (e: 'current-change', val: number): void
   (e: 'action', event: string, row: any, index: number): void
-  (e: 'pagination', val: { page: number; limit: number }): void
+  (e: 'pagination', val: { currentPage: number; pageSize: number }): void
 }>()
 
 /**
@@ -352,10 +312,10 @@ const handleFilterChange = (val: any) => {
  * 处理分页变化
  * @param val 分页信息
  */
-const handlePagination = (val: { page: number; limit: number }) => {
+const handlePagination = (val: { currentPage: number; pageSize: number }) => {
   emit('pagination', val)
-  emit('size-change', val.limit)
-  emit('current-change', val.page)
+  emit('size-change', val.pageSize)
+  emit('current-change', val.currentPage)
 }
 
 /**

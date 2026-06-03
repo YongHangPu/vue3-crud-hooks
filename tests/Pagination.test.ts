@@ -49,31 +49,31 @@ describe('Pagination.vue', () => {
     const wrapper = mount(Pagination, {
       props: {
         total: 100,
-        page: 1,
-        limit: 10
+        currentPage: 1,
+        pageSize: 10
       }
     })
 
     await wrapper.find('.trigger-page').trigger('click')
 
-    expect(wrapper.emitted('update:page')).toEqual([[2]])
-    expect(wrapper.emitted('pagination')).toEqual([[{ page: 2, limit: 10 }]])
+    expect(wrapper.emitted('update:currentPage')).toEqual([[2]])
+    expect(wrapper.emitted('pagination')).toEqual([[{ currentPage: 2, pageSize: 10 }]])
   })
 
   it('修改每页条数时触发分页事件并支持自动滚动', async () => {
     const wrapper = mount(Pagination, {
       props: {
         total: 100,
-        page: 1,
-        limit: 10,
+        currentPage: 1,
+        pageSize: 10,
         autoScroll: true
       }
     })
 
     await wrapper.find('.trigger-size').trigger('click')
 
-    expect(wrapper.emitted('update:limit')).toEqual([[50]])
-    expect(wrapper.emitted('pagination')).toEqual([[{ page: 1, limit: 50 }]])
+    expect(wrapper.emitted('update:pageSize')).toEqual([[50]])
+    expect(wrapper.emitted('pagination')).toEqual([[{ currentPage: 1, pageSize: 50 }]])
     expect(mocks.scrollToSpy).toHaveBeenCalledWith(0, 800)
   })
 

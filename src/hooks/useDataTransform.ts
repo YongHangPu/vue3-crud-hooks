@@ -13,6 +13,7 @@ export const useDataTransform = () => {
   const arrayToString = (data: any, fields: string[], separator = ',') => {
     const result = { ...data }
     fields.forEach((field) => {
+      // 仅对数组字段执行 join，非数组字段跳过
       if (Array.isArray(result[field])) {
         result[field] = result[field].join(separator)
       }
@@ -32,10 +33,13 @@ export const useDataTransform = () => {
     fields.forEach((field) => {
       const value = result[field]
       if (Array.isArray(value)) {
+        // 已是数组，直接保留
         result[field] = value
       } else if (typeof value === 'string' && value) {
+        // 字符串按分隔符拆分
         result[field] = value.split(separator)
       } else {
+        // 空值或无值字段初始化为空数组
         result[field] = []
       }
     })
@@ -57,25 +61,30 @@ export const useDataTransform = () => {
     const processed = { ...params }
     const timeValue = processed[timeField]
 
+    // 仅处理形如 [start, end] 的数组
     if (Array.isArray(timeValue) && timeValue.length === 2) {
+      // 确定拆分后的字段名
       let startField = ''
       let endField = ''
 
       if (typeof fieldConfig === 'object') {
+        // 对象配置：直接指定 start/end 字段名
         startField = fieldConfig.start
         endField = fieldConfig.end
       } else if (typeof fieldConfig === 'string') {
+        // 字符串配置：拼接前缀，如 beginCreateTime / endCreateTime
         startField = `begin${fieldConfig}`
         endField = `end${fieldConfig}`
       } else {
-        // 默认添加 Start/End 后缀
+        // 默认：以字段名加 begin/end 前缀
         startField = `begin${timeField}`
         endField = `end${timeField}`
       }
 
       processed[startField] = timeValue[0]
       processed[endField] = timeValue[1]
-      delete processed[timeField] // 删除原始时间字段
+      // 删除原始时间范围字段，避免传给后端
+      delete processed[timeField]
     }
 
     return processed
@@ -89,9 +98,11 @@ export const useDataTransform = () => {
    */
   const cleanEmptyFields = (data: any, fields?: string[]) => {
     const result = { ...data }
+    // 不传 fields 则清理所有空值字段
     const targetFields = fields || Object.keys(result)
 
     targetFields.forEach((field) => {
+      // 删除值为 '' / null / undefined 的字段
       if (result[field] === '' || result[field] === null || result[field] === undefined) {
         delete result[field]
       }

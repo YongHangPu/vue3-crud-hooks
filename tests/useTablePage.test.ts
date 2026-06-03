@@ -119,6 +119,46 @@ describe('useTablePage', () => {
     expect(hook.pageInfo.total).toBe(0)
   })
 
+  it('第 1 页删除最后一条数据不往下回退', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [], total: 0 })
+    const deleteApi = vi.fn().mockResolvedValue({ msg: '删除成功' })
+    const messageApi = createMessageApi()
+    messageApi.confirm.mockResolvedValue(true)
+
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        { autoFetch: false, messageApi },
+        { deleteApi }
+      )
+    )
+
+    hook.tableData.value = [{ id: 1 }]
+    hook.pageInfo.pageNum = 1
+
+    await hook.handleDelete({ id: 1 })
+    await flushPromises()
+
+    // 第 1 页不应回退到 0
+    expect(hook.pageInfo.pageNum).toBe(1)
+  })
+
+  it('自定义 idKey 影响 selectedIds 解析', async () => {
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn(),
+        {},
+        { autoFetch: false, messageApi: createMessageApi() },
+        { idKey: 'uuid' }
+      )
+    )
+
+    hook.tableBindings.value.onSelectionChange([{ uuid: 'u-1' }, { uuid: 'u-2' }])
+
+    expect(hook.selectedIds.value).toEqual(['u-1', 'u-2'])
+  })
+
   it('删除成功后在当前页为空时回退页码并刷新列表', async () => {
     const fetchData = vi.fn().mockResolvedValue({
       rows: [],
@@ -427,7 +467,7 @@ describe('useTablePage', () => {
     )
 
     hook.tableBindings.value.onSelectionChange([{ id: 1 }, { id: 2 }])
-    await hook.tableBindings.value.onPagination({ page: 3, limit: 20 })
+    await hook.tableBindings.value.onPagination({ currentPage: 3, pageSize: 20 })
     hook.tableBindings.value.onAction('view', { id: 1 }, 0)
 
     expect(hook.selectedRows.value).toEqual([{ id: 1 }, { id: 2 }])

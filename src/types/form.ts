@@ -3,17 +3,28 @@ import type { MessageApi } from './common'
 
 /**
  * 表单弹窗 Hook 返回值接口
+ * @template T 表单数据类型
  */
 export interface FormDialogHook<T = any> {
+  /** 弹窗显示状态 */
   dialogVisible: Ref<boolean>
+  /** 弹窗模式：'add' 新增 | 'edit' 编辑 */
   dialogMode: Ref<'add' | 'edit'>
+  /** el-form 组件引用 */
   formRef: Ref<any>
+  /** 提交操作加载状态 */
   submitLoading: Ref<boolean>
+  /** 编辑回显数据加载状态 */
   formLoading: Ref<boolean>
+  /** 表单数据 */
   formData: Ref<T>
+  /** 打开弹窗 */
   openDialog: (mode: 'add' | 'edit', row?: any) => Promise<void>
+  /** 提交表单（验证 + 转换 + API） */
   submitForm: () => Promise<void>
+  /** 重置表单 */
   resetForm: () => void
+  /** 关闭弹窗（重置表单并隐藏） */
   handleDialogClose: () => void
 }
 

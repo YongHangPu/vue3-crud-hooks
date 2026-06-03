@@ -15,18 +15,28 @@ export interface CrudPageHook<T = any> extends TablePageHook<T>, FormDialogHook<
 export interface CrudPageConfig<T = any> {
   /** API 接口配置 */
   apis: {
+    /** 列表查询接口 */
     list: (params: any) => Promise<any>
+    /** 新增接口 */
     add: (data: T) => Promise<any>
+    /** 编辑接口 */
     update: (data: T) => Promise<any>
+    /** 删除接口（可选） */
     delete?: (id: any) => Promise<any>
+    /** 批量删除接口（可选） */
     batchDelete?: (ids: any[]) => Promise<any>
+    /** 删除全部接口（可选） */
     deleteAll?: () => Promise<any>
+    /** 获取详情接口（可选，编辑回显用） */
     get?: (id: any) => Promise<any>
+    /** 导出接口（可选） */
     export?: (options: { url?: string; params: any; filename: string }) => Promise<any> | void
   }
   /** 表单配置 */
   form: {
+    /** 表单初始数据 */
     initialData: T
+    /** 表单校验规则（可选） */
     rules?: any
     /** 提交前数据转换 */
     beforeSubmit?: (data: T) => any
@@ -64,15 +74,16 @@ export interface CrudPageConfig<T = any> {
   }
   /** 搜索配置 */
   search?: {
+    /** 搜索表单初始值 */
     initialData: any
-    /** 搜索前参数转换 */
+    /** 搜索前参数转换，返回 false 阻止请求 */
     beforeSearch?: (params: any) => any
   }
   /** 高级配置 */
   advanced?: {
     /** 数组字段 */
     arrayFields?: string[]
-    /** 时间字段 */
+    /** 时间范围字段，自动拆分为 start/end 两个参数 */
     timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
     /** 删除成功回调 */
     onDeleteSuccess?: (deletedRow: any) => void

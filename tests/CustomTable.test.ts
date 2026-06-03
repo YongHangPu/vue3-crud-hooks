@@ -166,7 +166,7 @@ describe('CustomTable.vue', () => {
 
     await wrapper.find('.trigger-page').trigger('click')
 
-    expect(wrapper.emitted('pagination')).toEqual([[{ page: 2, limit: 10 }]])
+    expect(wrapper.emitted('pagination')).toEqual([[{ currentPage: 2, pageSize: 10 }]])
     expect(wrapper.emitted('current-change')).toEqual([[2]])
     expect(wrapper.emitted('size-change')).toEqual([[10]])
   })
