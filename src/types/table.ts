@@ -196,20 +196,16 @@ export interface DeleteConfig {
   deleteApi?: (id: any) => Promise<any>
   /** 批量删除数据的API函数 */
   batchDeleteApi?: (ids: any[]) => Promise<any>
-  /** 删除所有数据的API函数 */
-  deleteAllApi?: () => Promise<any>
   /** 数据主键字段名，默认为 'id' */
   idKey?: string
   /** 删除确认提示文字 */
   confirmMessage?: string
   /** 批量删除确认提示文字 */
   batchConfirmMessage?: string
-  /** 删除所有数据确认提示文字 */
-  deleteAllConfirmMessage?: string
   /** 删除成功回调 */
   onDeleteSuccess?: (deletedRow: any) => void
   /** 批量删除成功回调 */
-  onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
+  onBatchDeleteSuccess?: (deletedRows: any[]) => void
 }
 
 /**

@@ -367,7 +367,7 @@ describe('useCrudPage', () => {
     await hook.handleBatchDelete()
     await flushPromises()
 
-    expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1 }], false)
+    expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1 }])
   })
 
   it('无表格配置时 tableBindings.config 为 null', () => {

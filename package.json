@@ -29,6 +29,7 @@
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
+  "style": "./dist/vue3-crud-hooks.css",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -36,6 +37,7 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./style.css": "./dist/vue3-crud-hooks.css",
     "./useTablePage": {
       "types": "./dist/hooks/useTablePage.d.ts",
       "import": "./dist/useTablePage.mjs",

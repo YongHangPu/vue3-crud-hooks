@@ -2,6 +2,14 @@
 
 基于 Element Plus `el-pagination` 的封装组件，支持 `v-bind` 属性透传和翻页自动滚动。
 
+如果你独立使用 `Pagination`，建议先引入组件库样式：
+
+```ts
+import 'vue3-crud-hooks/style.css'
+```
+
+否则分页容器的宽度、默认右对齐，以及 `hidden` 隐藏态样式不会生效。
+
 ## 基础用法
 
 ::: preview

@@ -31,6 +31,21 @@ pnpm add vue3-crud-hooks
 
 需要同级安装 `vue@^3` 和 `element-plus@^2`。
 
+如果你使用了 `CustomTable` 或 `Pagination` 组件，建议同时引入组件库样式：
+
+```ts
+import 'vue3-crud-hooks/style.css'
+```
+
+不引入时，组件功能仍可用，但以下内置样式不会生效：
+
+- `CustomTable` 内部分页区域的上边距
+- 操作列中多个 `el-link` / `el-button` 之间的间距
+- `Pagination` 容器的宽度与右对齐布局
+- `Pagination` 的 `hidden` 隐藏样式
+
+如果你只使用 Hooks，不使用 `CustomTable` / `Pagination`，则不需要额外引入这份样式。
+
 ---
 
 ## 🔨 快速开始
@@ -59,13 +74,13 @@ pnpm add vue3-crud-hooks
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogMode === 'add' ? '新增' : '编辑'">
-      <el-form :model="formData" label-width="80px">
+      <el-form ref="formRef" :model="formData" label-width="80px">
         <el-form-item label="名称">
           <el-input v-model="formData.name" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="handleDialogClose">取消</el-button>
         <el-button type="primary" @click="submitForm">确定</el-button>
       </template>
     </el-dialog>
@@ -81,8 +96,10 @@ const {
   dialogVisible,
   dialogMode,
   formData,
+  formRef,
   handleSearch,
   handleReset,
+  handleDialogClose,
   openDialog,
   submitForm,
   tableBindings,           // 一键绑定，包含 config / data / loading / 事件
@@ -192,6 +209,7 @@ const config: CustomTableConfig = {
 | `tableBindings` | **一键绑定**到 `CustomTable`（含 `config`/`data`/`loading` + 事件） | `ComputedRef` |
 | `tableData` | 表格数据 | `Ref<T[]>` |
 | `loading` | 加载状态 | `Ref<boolean>` |
+| `deleteLoading` | 删除操作加载状态 | `Ref<boolean>` |
 | `pageInfo` | 分页信息 `{ pageNum, pageSize, total }` | `Reactive` |
 | `searchParams` | 搜索参数（响应式，可直接绑定到表单） | `Reactive` |
 | `selectedRows` / `selectedIds` | 当前选中行数据 / ID 列表 | `Ref` |
@@ -204,8 +222,13 @@ const config: CustomTableConfig = {
 | `dialogVisible` | 弹窗显示状态 | `Ref<boolean>` |
 | `dialogMode` | 弹窗模式 `'add' \| 'edit'` | `Ref` |
 | `formData` | 表单数据 | `Ref<T>` |
+| `formRef` | 表单实例引用 | `Ref<any>` |
+| `submitLoading` | 提交加载状态 | `Ref<boolean>` |
+| `formLoading` | 编辑回显加载状态 | `Ref<boolean>` |
 | `openDialog` | 打开弹窗 | `(mode, row?) => Promise<void>` |
 | `submitForm` | 提交表单 | `() => Promise<void>` |
+| `resetForm` | 重置表单 | `() => void` |
+| `handleDialogClose` | 关闭弹窗 | `() => void` |
 
 **配置项 `CrudPageConfig<T>`：**
 
@@ -225,7 +248,12 @@ interface CrudPageConfig<T> {
     idKey?: string                            // 主键字段名，默认 'id'
     dataKey?: string                          // 响应数据字段名，默认 'rows'
     totalKey?: string                         // 响应总数字段名，默认 'total'
+    autoFetch?: boolean                       // 是否自动获取数据
+    autoDetect?: boolean                      // 是否自动检测响应结构
     exportUrl?: string                        // 导出下载 URL
+    confirmMessage?: string                   // 删除确认提示
+    batchConfirmMessage?: string              // 批量删除确认提示
+    onCustomAction?: (event, row, index) => void // 自定义事件处理器
   }
   form: {
     initialData: T                            // 表单初始值

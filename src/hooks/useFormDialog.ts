@@ -48,6 +48,12 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
   // 消息提示封装
   const showMessage = useMessage(config.messageApi)
 
+  const clearValidation = () => {
+    nextTick(() => {
+      formRef.value?.clearValidate?.()
+    })
+  }
+
   /**
    * 打开弹窗
    * @description 根据模式打开新增或编辑弹窗，编辑模式下会自动获取数据
@@ -58,36 +64,43 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     dialogMode.value = mode
     dialogVisible.value = true
 
+    if (mode === 'add') {
+      formData.value = deepClone(config.initialFormData)
+      clearValidation()
+      return
+    }
+
     // 编辑模式处理
-    if (mode === 'edit') {
-      if (config.getApi) {
-        // 配置了获取API时，通过API获取详细数据
-        formLoading.value = true
-        try {
-          const id = row?.[idKey] !== undefined ? row[idKey] : row
-          const [err, res] = await to(config.getApi(id))
-          if (!err) {
-            // 如果配置了数据转换函数，先执行转换
-            const data = config.dataTransform?.afterGet ? config.dataTransform.afterGet(res.data) : res.data
-            formData.value = deepClone(data)
-          } else {
-            showMessage.error(`获取数据失败: ${err}`)
-            // 获取数据失败时关闭弹窗，避免展示空白表单
-            dialogVisible.value = false
+    if (config.getApi) {
+      // 配置了获取API时，通过API获取详细数据
+      formLoading.value = true
+      try {
+        const id = row?.[idKey] !== undefined ? row[idKey] : row
+        const [err, res] = await to(config.getApi(id))
+        if (!err) {
+          // 合并 initialFormData，避免详情接口返回字段不全时污染表单结构
+          const data = config.dataTransform?.afterGet ? config.dataTransform.afterGet(res.data) : res.data
+          formData.value = {
+            ...deepClone(config.initialFormData),
+            ...deepClone(data)
           }
-        } finally {
-          formLoading.value = false
+          clearValidation()
+        } else {
+          showMessage.error(`获取数据失败: ${err}`)
+          // 获取数据失败时关闭弹窗，避免展示空白表单
+          dialogVisible.value = false
         }
-      } else if (row) {
-        // 未配置获取API但有行数据时，直接使用行数据回显
-        // 合并 initialFormData 和 row，确保字段完整性
-        formData.value = { ...deepClone(config.initialFormData), ...deepClone(row) }
-        
-        // 清除可能的验证残留
-        nextTick(() => {
-          formRef.value?.clearValidate()
-        })
+      } finally {
+        formLoading.value = false
       }
+    } else if (row) {
+      // 未配置获取API但有行数据时，直接使用行数据回显
+      // 合并 initialFormData 和 row，确保字段完整性
+      formData.value = { ...deepClone(config.initialFormData), ...deepClone(row) }
+      clearValidation()
+    } else {
+      formData.value = deepClone(config.initialFormData)
+      clearValidation()
     }
   }
 

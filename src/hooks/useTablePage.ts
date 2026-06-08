@@ -88,7 +88,7 @@ export const useTablePage = <T = any>(
   // 默认删除配置：各接口默认抛出"未配置"错误
   const defaultDeleteConfig: Required<Omit<DeleteConfig, 'onDeleteSuccess' | 'onBatchDeleteSuccess'>> & {
     onDeleteSuccess?: (row: any) => void
-    onBatchDeleteSuccess?: (rows: any[], isDeleteAll: boolean) => void
+    onBatchDeleteSuccess?: (rows: any[]) => void
   } = {
     deleteApi: async () => {
       throw new Error('删除接口未配置')
@@ -96,13 +96,9 @@ export const useTablePage = <T = any>(
     batchDeleteApi: async () => {
       throw new Error('批量删除接口未配置')
     },
-    deleteAllApi: async () => {
-      throw new Error('删除全部数据接口未配置')
-    },
     idKey: 'id',
     confirmMessage: '确定要删除当前数据吗？',
     batchConfirmMessage: '确定要删除选中的数据吗？',
-    deleteAllConfirmMessage: '确定要删除全部数据吗？',
     onDeleteSuccess: undefined,
     onBatchDeleteSuccess: undefined
   }
@@ -444,7 +440,7 @@ export const useTablePage = <T = any>(
 
         // 调用批量删除成功回调
         if (finalDeleteConfig.onBatchDeleteSuccess) {
-          finalDeleteConfig.onBatchDeleteSuccess(deletedRows, false)
+          finalDeleteConfig.onBatchDeleteSuccess(deletedRows)
         } else {
           await getTableData()
         }

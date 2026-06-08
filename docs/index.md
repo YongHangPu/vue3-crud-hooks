@@ -42,6 +42,14 @@ pnpm add vue3-crud-hooks
 
 需要同级安装 `vue@^3` 和 `element-plus@^2`。
 
+如果你使用 `CustomTable` 或 `Pagination` 组件，请额外引入组件样式：
+
+```ts
+import 'vue3-crud-hooks/style.css'
+```
+
+这份样式主要包含操作列按钮间距、分页区域间距、分页对齐和隐藏态等组件内置布局样式。只使用 Hooks 时可不引入。
+
 ### 一个完整的 CRUD 页面
 
 ```vue

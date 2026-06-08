@@ -25,8 +25,6 @@ export interface CrudPageConfig<T = any> {
     delete?: (id: any) => Promise<any>
     /** 批量删除接口（可选） */
     batchDelete?: (ids: any[]) => Promise<any>
-    /** 删除全部接口（可选） */
-    deleteAll?: () => Promise<any>
     /** 获取详情接口（可选，编辑回显用） */
     get?: (id: any) => Promise<any>
     /** 导出接口（可选） */
@@ -67,8 +65,6 @@ export interface CrudPageConfig<T = any> {
     confirmMessage?: string
     /** 批量删除确认提示文字 */
     batchConfirmMessage?: string
-    /** 删除全部确认提示文字 */
-    deleteAllConfirmMessage?: string
     /** 自定义事件处理器 */
     onCustomAction?: (event: string, row: any, index: number) => void
   }
@@ -88,7 +84,7 @@ export interface CrudPageConfig<T = any> {
     /** 删除成功回调 */
     onDeleteSuccess?: (deletedRow: any) => void
     /** 批量删除成功回调 */
-    onBatchDeleteSuccess?: (deletedRows: any[], isDeleteAll: boolean) => void
+    onBatchDeleteSuccess?: (deletedRows: any[]) => void
     /** 消息 API */
     messageApi?: Partial<MessageApi>
   }

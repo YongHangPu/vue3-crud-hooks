@@ -74,12 +74,11 @@ useTablePage<T = any>(
 |------|------|--------|------|
 | `deleteApi` | `(id) => Promise<any>` | — | 删除接口 |
 | `batchDeleteApi` | `(ids) => Promise<any>` | — | 批量删除接口 |
-| `deleteAllApi` | `() => Promise<any>` | — | 删除全部接口 |
 | `idKey` | `string` | `'id'` | 主键字段名 |
 | `confirmMessage` | `string` | `'确定要删除当前数据吗？'` | 删除确认提示 |
 | `batchConfirmMessage` | `string` | `'确定要删除选中的数据吗？'` | 批量删除确认提示 |
 | `onDeleteSuccess` | `(row) => void` | — | 删除成功回调（默认自动刷新列表） |
-| `onBatchDeleteSuccess` | `(rows, isDeleteAll) => void` | — | 批量删除成功回调 |
+| `onBatchDeleteSuccess` | `(rows) => void` | — | 批量删除成功回调 |
 
 ### ExportConfig
 

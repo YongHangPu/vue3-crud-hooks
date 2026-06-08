@@ -80,6 +80,56 @@ describe('useFormDialog', () => {
     expect(formRef.clearValidate).toHaveBeenCalled()
   })
 
+  it('新增模式打开时重置表单数据并清理校验状态', async () => {
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { id: 0, name: '', status: 1 },
+        addApi: vi.fn(),
+        updateApi: vi.fn()
+      })
+    )
+    const formRef = createFormRef()
+    hook.formRef.value = formRef
+    hook.formData.value = { id: 9, name: 'stale', status: 0 }
+
+    await hook.openDialog('add')
+    await nextTick()
+
+    expect(hook.formData.value).toEqual({ id: 0, name: '', status: 1 })
+    expect(formRef.clearValidate).toHaveBeenCalled()
+  })
+
+  it('编辑详情回显时会合并 initialFormData，避免缺失字段', async () => {
+    const getApi = vi.fn().mockResolvedValue({
+      data: {
+        id: 1,
+        name: 'Tom'
+      }
+    })
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { id: 0, name: '', status: 1, tags: [] as string[] },
+        addApi: vi.fn(),
+        updateApi: vi.fn(),
+        getApi
+      })
+    )
+    const formRef = createFormRef()
+    hook.formRef.value = formRef
+
+    await hook.openDialog('edit', { id: 1 })
+    await flushPromises()
+    await nextTick()
+
+    expect(hook.formData.value).toEqual({
+      id: 1,
+      name: 'Tom',
+      status: 1,
+      tags: []
+    })
+    expect(formRef.clearValidate).toHaveBeenCalled()
+  })
+
   it('新增提交成功时执行 beforeSubmit、onSubmitSuccess 和 onAfterSubmit', async () => {
     const addApi = vi.fn().mockResolvedValue({ msg: '保存成功' })
     const onSubmitSuccess = vi.fn()

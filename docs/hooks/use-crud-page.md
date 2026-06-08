@@ -100,7 +100,7 @@ useCrudPage<T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 | `timeFields` | `Array<{ field, prefix }>` | 时间范围字段（自动拆分为 `start`/`end` 两个参数） |
 | `messageApi` | `Partial<MessageApi>` | 自定义消息提示 API |
 | `onDeleteSuccess` | `(row) => void` | 单行删除成功回调 |
-| `onBatchDeleteSuccess` | `(rows, isDeleteAll) => void` | 批量删除成功回调 |
+| `onBatchDeleteSuccess` | `(rows) => void` | 批量删除成功回调 |
 
 ## 配置详解
 

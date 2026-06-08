@@ -6,6 +6,14 @@
 
 CustomTable 可脱离 Hooks 独立使用，只需要传入 `config` + `data` + `loading` 即可。
 
+如果你在业务项目中直接使用 `CustomTable`，建议先引入组件库样式：
+
+```ts
+import 'vue3-crud-hooks/style.css'
+```
+
+否则表格操作列按钮之间的默认间距，以及表格底部分页区域的默认上边距不会生效。
+
 ::: preview
 demo-preview=../examples/custom-table/standalone.vue
 :::

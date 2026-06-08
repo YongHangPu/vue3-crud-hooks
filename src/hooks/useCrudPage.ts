@@ -38,11 +38,9 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       // 删除配置
       deleteApi: apis.delete,
       batchDeleteApi: apis.batchDelete,
-      deleteAllApi: apis.deleteAll,
       idKey: table.idKey,
       confirmMessage: table.confirmMessage,
       batchConfirmMessage: table.batchConfirmMessage,
-      deleteAllConfirmMessage: table.deleteAllConfirmMessage,
       onDeleteSuccess: advanced.onDeleteSuccess,
       onBatchDeleteSuccess: advanced.onBatchDeleteSuccess
     },
