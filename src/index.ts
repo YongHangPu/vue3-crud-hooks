@@ -9,6 +9,7 @@ export * from './hooks/useFormDialog'
 export * from './hooks/useCrudPage'
 export * from './hooks/useDataTransform'
 export * from './hooks/useMessage'
+export * from './hooks/useTableHeight'
 
 export { default as CustomTable } from './components/CustomTable.vue'
 export { default as Pagination } from './components/Pagination.vue'

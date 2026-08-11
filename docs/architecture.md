@@ -69,6 +69,15 @@ vue3-crud-hooks
 |   +-- crud.ts
 |   +-- common.ts
 |
++-- utils
+|   |
+|   +-- response.ts
+|   |   +-- 嵌套包装响应解析(支持 { code, data: { records, total } })
+|   |   +-- 业务成功判断(code ∈ [0, 200, '0', '200'],可自定义 isSuccess)
+|   |   +-- 响应消息提取(message/msg 兼容)
+|   |
+|   +-- scroll-to.ts
+|
 +-- docs
     |
     +-- hooks 文档
@@ -110,11 +119,12 @@ vue3-crud-hooks
   +-- useTablePage.getTableData()
         |
         +-- 合并 pageInfo + searchParams
-        +-- useDataTransform.processTimeRange()
-        +-- useDataTransform.arrayToString()
-        +-- beforeSearch()
+        +-- useDataTransform.processTimeRange() / arrayToString()
+        +-- beforeSearch()(返回 false/null 阻止请求)
         +-- fetchData(requestParams)
-        +-- parseResult(result)
+        |     +-- 请求序号竞态防护:过期响应/错误/loading 一律丢弃
+        +-- isBusinessSuccess()(业务码校验,失败走错误分支并展示后端消息)
+        +-- transformResponse()? / parseResult()(支持嵌套包装 { code, data: { records, total } })
         +-- 更新 tableData / pageInfo.total
         +-- 失败时 useMessage.error()
 ```
@@ -150,6 +160,7 @@ vue3-crud-hooks
         +-- formRef.validate()
         +-- beforeSubmit()
         +-- addApi() / updateApi()
+        +-- isBusinessSuccess()(业务失败不提示成功)
         +-- useMessage.success() / useMessage.error()
         +-- handleDialogClose()
         +-- onSubmitSuccess()

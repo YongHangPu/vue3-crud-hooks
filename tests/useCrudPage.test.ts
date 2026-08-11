@@ -312,7 +312,7 @@ describe('useCrudPage', () => {
           delete: vi.fn().mockResolvedValue({ msg: '删除成功' })
         },
         form: {
-          initialData: { name: '' }
+          initialData: { id: 0, name: '' }
         },
         table: {
           autoFetch: false,
@@ -333,6 +333,42 @@ describe('useCrudPage', () => {
     expect(onDeleteSuccess).toHaveBeenCalledWith({ id: 1, name: 'Tom' })
   })
 
+  it('删除返回业务失败(code 非成功)时提示错误且不执行成功回调', async () => {
+    const onDeleteSuccess = vi.fn()
+    const messageApi = createMessageApi()
+    messageApi.confirm.mockResolvedValue(true)
+    const hook = mountComposable(() =>
+      useCrudPage({
+        apis: {
+          list: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+          add: vi.fn(),
+          update: vi.fn(),
+          delete: vi.fn().mockResolvedValue({ code: 500, message: '该数据已被引用,无法删除' })
+        },
+        form: {
+          initialData: { id: 0, name: '' }
+        },
+        table: {
+          autoFetch: false,
+          config: {
+            columns: []
+          }
+        },
+        advanced: {
+          messageApi,
+          onDeleteSuccess
+        }
+      })
+    )
+
+    await hook.handleDelete({ id: 1, name: 'Tom' })
+    await flushPromises()
+
+    expect(messageApi.success).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('该数据已被引用,无法删除')
+    expect(onDeleteSuccess).not.toHaveBeenCalled()
+  })
+
   it('批量删除成功时执行 onBatchDeleteSuccess', async () => {
     const onBatchDeleteSuccess = vi.fn()
     const messageApi = createMessageApi()
@@ -346,7 +382,7 @@ describe('useCrudPage', () => {
           batchDelete: vi.fn().mockResolvedValue({ msg: '批量删除成功' })
         },
         form: {
-          initialData: { name: '' }
+          initialData: { id: 0, name: '' }
         },
         table: {
           autoFetch: false,
@@ -361,13 +397,16 @@ describe('useCrudPage', () => {
       })
     )
 
-    hook.tableData.value = [{ id: 1 }, { id: 2 }]
-    hook.selectedRows.value = [{ id: 1 }]
+    hook.tableData.value = [
+      { id: 1, name: 'Tom' },
+      { id: 2, name: 'Jerry' }
+    ]
+    hook.selectedRows.value = [{ id: 1, name: 'Tom' }]
 
     await hook.handleBatchDelete()
     await flushPromises()
 
-    expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1 }])
+    expect(onBatchDeleteSuccess).toHaveBeenCalledWith([{ id: 1, name: 'Tom' }])
   })
 
   it('无表格配置时 tableBindings.config 为 null', () => {
@@ -423,6 +462,74 @@ describe('useCrudPage', () => {
     })
   })
 
+  it('advanced.isSuccess 透传到列表/删除/提交(自定义成功码)', async () => {
+    const messageApi = createMessageApi()
+    messageApi.confirm.mockResolvedValue(true)
+    // 后端以 code=1 表示成功
+    const list = vi.fn().mockResolvedValue({ code: 1, rows: [{ id: 1, name: 'Tom' }], total: 1 })
+    const del = vi.fn().mockResolvedValue({ code: 1, message: '删除成功' })
+    const hook = mountComposable(() =>
+      useCrudPage({
+        apis: {
+          list,
+          add: vi.fn(),
+          update: vi.fn(),
+          delete: del
+        },
+        form: {
+          initialData: { id: 0, name: '' }
+        },
+        table: {
+          autoFetch: false,
+          config: { columns: [] }
+        },
+        advanced: {
+          messageApi,
+          isSuccess: (res) => res?.code === 1
+        }
+      })
+    )
+
+    await hook.getTableData()
+    await flushPromises()
+    expect(hook.tableData.value).toEqual([{ id: 1, name: 'Tom' }])
+
+    await hook.handleDelete({ id: 1, name: 'Tom' })
+    await flushPromises()
+    expect(messageApi.success).toHaveBeenCalledWith('删除成功')
+  })
+
+  it('table.transformResponse 透传到列表解析', async () => {
+    const list = vi.fn().mockResolvedValue({
+      payload: { items: [{ id: 2, name: 'Jerry' }], totalCount: 3 }
+    })
+    const hook = mountComposable(() =>
+      useCrudPage({
+        apis: {
+          list,
+          add: vi.fn(),
+          update: vi.fn()
+        },
+        form: {
+          initialData: { id: 0, name: '' }
+        },
+        table: {
+          autoFetch: false,
+          transformResponse: (res) => ({ data: res.payload.items, total: res.payload.totalCount })
+        },
+        advanced: {
+          messageApi: createMessageApi()
+        }
+      })
+    )
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 2, name: 'Jerry' }])
+    expect(hook.pageInfo.total).toBe(3)
+  })
+
   it('导出时透传参数到 useTablePage 并处理数组与时间字段', () => {
     const exportApi = vi.fn()
     const hook = mountComposable(() =>
@@ -434,7 +541,7 @@ describe('useCrudPage', () => {
           export: exportApi
         },
         form: {
-          initialData: { name: '', tags: [] as string[] },
+          initialData: { id: 0, name: '', tags: [] as string[] },
           beforeSubmit: (data) => ({
             ...data,
             extra: true
@@ -466,7 +573,7 @@ describe('useCrudPage', () => {
 
     hook.searchParams.tags = ['Vue', 'React']
     hook.searchParams.range = ['2025-01-01', '2025-01-31']
-    hook.selectedRows.value = [{ id: 1 }]
+    hook.selectedRows.value = [{ id: 1, name: 'Tom', tags: [] }]
     hook.handleExport({ filename: 'users', params: { status: 1 } })
 
     expect(exportApi).toHaveBeenCalledWith({

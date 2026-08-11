@@ -1,6 +1,7 @@
 import { ref, nextTick, toRaw, type Ref } from 'vue'
 import { to } from 'await-to-js'
 import { useMessage } from './useMessage'
+import { getResponseMessage, isBusinessSuccess } from '../utils/response'
 import type { FormDialogConfig, FormDialogHook } from '../types'
 
 /**
@@ -30,6 +31,10 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
    * @returns 深拷贝后的对象
    */
   const deepClone = (obj: any) => {
+    // undefined/null 直接返回,避免 JSON 回退时 JSON.parse(JSON.stringify(undefined)) 抛错
+    if (obj === undefined || obj === null) {
+      return obj
+    }
     const raw = toRaw(obj)
     if (typeof structuredClone === 'function') {
       try {
@@ -42,8 +47,11 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     return JSON.parse(JSON.stringify(raw))
   }
 
+  // 表单初始数据:优先 initialData(新命名),回退 initialFormData(兼容旧命名)
+  const initialFormData = (config.initialData ?? config.initialFormData ?? {}) as T
+
   // 表单数据
-  const formData = ref<T>(deepClone(config.initialFormData)) as Ref<T>
+  const formData = ref<T>(deepClone(initialFormData)) as Ref<T>
 
   // 消息提示封装
   const showMessage = useMessage(config.messageApi)
@@ -65,7 +73,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     dialogVisible.value = true
 
     if (mode === 'add') {
-      formData.value = deepClone(config.initialFormData)
+      formData.value = deepClone(initialFormData)
       clearValidation()
       return
     }
@@ -75,18 +83,25 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
       // 配置了获取API时，通过API获取详细数据
       formLoading.value = true
       try {
-        const id = row?.[idKey] !== undefined ? row[idKey] : row
-        const [err, res] = await to(config.getApi(id))
-        if (!err) {
+        // 防御:row 为对象时取主键字段;row 为原始值(id)时直接使用;两者都缺失时给出提示
+        const rowId = row !== null && typeof row === 'object' ? row?.[idKey] : row
+        if (rowId === undefined) {
+          showMessage.error(`编辑回显失败:未找到主键字段 "${idKey}"`)
+          dialogVisible.value = false
+          return
+        }
+        const [err, res] = await to(config.getApi(rowId))
+        if (!err && isBusinessSuccess(res, config.isSuccess)) {
           // 合并 initialFormData，避免详情接口返回字段不全时污染表单结构
           const data = config.dataTransform?.afterGet ? config.dataTransform.afterGet(res.data) : res.data
           formData.value = {
-            ...deepClone(config.initialFormData),
+            ...deepClone(initialFormData),
             ...deepClone(data)
           }
           clearValidation()
         } else {
-          showMessage.error(`获取数据失败: ${err}`)
+          // 网络错误或业务失败(code 非成功)统一按获取失败处理
+          showMessage.error(err ? `获取数据失败: ${err}` : getResponseMessage(res, '获取数据失败'))
           // 获取数据失败时关闭弹窗，避免展示空白表单
           dialogVisible.value = false
         }
@@ -96,10 +111,10 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     } else if (row) {
       // 未配置获取API但有行数据时，直接使用行数据回显
       // 合并 initialFormData 和 row，确保字段完整性
-      formData.value = { ...deepClone(config.initialFormData), ...deepClone(row) }
+      formData.value = { ...deepClone(initialFormData), ...deepClone(row) }
       clearValidation()
     } else {
-      formData.value = deepClone(config.initialFormData)
+      formData.value = deepClone(initialFormData)
       clearValidation()
     }
   }
@@ -129,8 +144,13 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
         return showMessage.error(`提交失败: ${err}`)
       }
 
+      // 业务失败判断:HTTP 200 但业务 code 非成功时,不提示成功
+      if (!isBusinessSuccess(res, config.isSuccess)) {
+        return showMessage.error(getResponseMessage(res, '提交失败'))
+      }
+
       // 显示成功消息
-      showMessage.success(res.msg || '操作成功')
+      showMessage.success(getResponseMessage(res, '操作成功'))
 
       // 执行自定义成功回调
       if (config.onSubmitSuccess) {
@@ -158,7 +178,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
    * @description 将表单数据重置为初始状态并清除验证状态
    */
   const resetForm = () => {
-    formData.value = deepClone(config.initialFormData)
+    formData.value = deepClone(initialFormData)
     nextTick(() => {
       formRef.value?.resetFields()
     })

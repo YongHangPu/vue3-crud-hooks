@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { MessageApi } from './common'
+import type { ApiResponse, MessageApi } from './common'
 
 /**
  * 表单弹窗 Hook 返回值接口
@@ -34,16 +34,18 @@ export interface FormDialogHook<T = any> {
  * @template T 表单数据类型
  */
 export interface FormDialogConfig<T = any> {
-  /** 表单初始数据 */
-  initialFormData: T
+  /** 表单初始数据(推荐,与 CrudPageConfig.form.initialData 命名一致) */
+  initialData?: T
+  /** 表单初始数据(兼容旧名称,与 initialData 二选一,优先 initialData) */
+  initialFormData?: T
   /** 主键字段名，编辑态获取详情时使用，默认为 'id' */
   idKey?: string
   /** 新增数据的API函数 */
-  addApi: (data: T) => Promise<any>
+  addApi: (data: T) => Promise<ApiResponse<any>>
   /** 更新数据的API函数 */
-  updateApi: (data: T) => Promise<any>
+  updateApi: (data: T) => Promise<ApiResponse<any>>
   /** 获取单条数据的API函数（可选，编辑时使用） */
-  getApi?: (id: any) => Promise<any>
+  getApi?: (id: any) => Promise<ApiResponse<T>>
   /** 表单验证规则（可选） */
   formRules?: any
   /** 提交成功后弹窗关闭时的回调（可选，通常用于刷新列表） */
@@ -59,4 +61,6 @@ export interface FormDialogConfig<T = any> {
   }
   /** 自定义消息提示配置 */
   messageApi?: Partial<MessageApi>
+  /** 业务成功判断函数,默认自动识别 code 字段 */
+  isSuccess?: (result: any) => boolean
 }

@@ -1,7 +1,7 @@
 <template>
   <div class="custom-table-container" :class="containerClass" :style="containerStyle">
     <el-table
-      ref="tableRef"
+      :ref="setTableRef"
       v-bind="forwardedAttrs"
       :data="tableData"
       v-loading="loading"
@@ -101,32 +101,15 @@
 <script setup lang="ts">
 import { ref, computed, useSlots, useAttrs } from 'vue'
 import { ElTable, ElTableColumn, ElLink, ElButton } from 'element-plus'
-import type { TableProps } from 'element-plus'
-import type { TableColumnCtx } from 'element-plus/es/components/table/src/table-column/defaults'
-// 空类型导入解决 Element Plus 导致的 TS2742 类型推断错误
-import type { } from 'lodash-unified'
+import type { TableInstance } from 'element-plus'
+// 注意:element-plus 的 TableInstance/TableProps 类型链内部引用 lodash-unified。
+// vue-tsc 生成组件声明(TS2742)时需要通过本文件显式引用该包才能生成可移植的类型名,
+// 这是 vue-tsc 处理第三方组件模板类型的已知要求。lodash-unified 已声明为 dependencies,
+// 消费方安装时(或通过 element-plus 传递依赖)必然可解析,不会出现类型断链。
+import type {} from 'lodash-unified'
 import Pagination from './Pagination.vue'
-import type { CustomTableConfig, TableButtonConfig } from '../types/table'
-/**
- * 操作按钮配置（继承共享类型，强化 btnText 为必填）
- */
-interface ActionButton extends TableButtonConfig {
-  btnText: string
-}
-
-/**
- * 列配置（继承 Element Plus 原生列属性，获得 sortable/filters 等类型校验；
- * slotName/buttons/hidden 为库扩展字段）
- */
-interface ColumnConfig extends Partial<TableColumnCtx<any>> {
-  /** 插槽名称，优先级高于 prop */
-  slotName?: string
-  /** 操作按钮配置（仅当 type 为 action 时有效） */
-  buttons?: ActionButton[]
-  /** 是否隐藏该列 */
-  hidden?: boolean
-  [key: string]: any
-}
+// 复用共享类型,避免在组件内重复定义列/按钮配置
+import type { CustomTableConfig, TableColumnConfig, TableButtonConfig, ActionEvent } from '../types/table'
 
 /**
  * 组件属性接口
@@ -139,7 +122,8 @@ interface ColumnConfig extends Partial<TableColumnCtx<any>> {
 interface Props {
   config: CustomTableConfig | null
   data: any[]
-  props?: Partial<TableProps<any>>
+  /** 透传给 el-table 的属性（border、stripe 等，优先级高于 config.props） */
+  props?: Record<string, any>
   loading?: boolean
 }
 
@@ -178,8 +162,12 @@ const forwardedAttrs = computed(() => {
   return merged
 })
 
-// 表格引用
-const tableRef = ref<any>(null)
+// 表格引用:使用 element-plus 公开的 TableInstance 类型,避免 d.ts 引用内部路径
+// 采用函数式 ref 绑定,避免 vue-tsc 在模板推断中内联完整的 el-table 实例类型(会大幅膨胀 d.ts)
+const tableRef = ref<TableInstance>()
+const setTableRef = (el: any) => {
+  tableRef.value = el
+}
 
 // 表格属性
 const tableProps = computed(() => ({
@@ -196,14 +184,14 @@ const tableData = computed(() => props.data)
  * 处理后的列配置，为未指定type的列设置默认值
  * @returns 处理后的列配置数组
  */
-const processedColumns = computed<ColumnConfig[]>(() => {
+const processedColumns = computed<TableColumnConfig[]>(() => {
   return (props.config?.columns || []).map((column) => {
     const hasWidth = column.width || column.minWidth
     return {
       type: 'default',
       minWidth: hasWidth ? column.minWidth : 100,
       ...column
-    } as ColumnConfig
+    } as TableColumnConfig
   })
 })
 
@@ -252,14 +240,14 @@ const emit = defineEmits<{
   (e: 'filter-change', val: any): void
   (e: 'size-change', val: number): void
   (e: 'current-change', val: number): void
-  (e: 'action', event: string, row: any, index: number): void
+  (e: 'action', event: ActionEvent, row: any, index: number): void
   (e: 'pagination', val: { currentPage: number; pageSize: number }): void
 }>()
 
 /**
  * 获取列的插槽名，优先使用 slotName，其次是 prop
  */
-const getColumnSlotName = (column: ColumnConfig): string | undefined => {
+const getColumnSlotName = (column: TableColumnConfig): string | undefined => {
   return column.slotName || column.prop
 }
 
@@ -268,7 +256,7 @@ const getColumnSlotName = (column: ColumnConfig): string | undefined => {
  * @param column 列配置
  * @returns 是否有自定义插槽
  */
-const hasCustomSlot = (column: ColumnConfig): boolean => {
+const hasCustomSlot = (column: TableColumnConfig): boolean => {
   const slotName = getColumnSlotName(column)
   return !!(slotName && slots[slotName])
 }
@@ -278,7 +266,7 @@ const hasCustomSlot = (column: ColumnConfig): boolean => {
  * @param column 列配置
  * @returns 是否有自定义表头插槽
  */
-const hasHeaderSlot = (column: ColumnConfig): boolean => {
+const hasHeaderSlot = (column: TableColumnConfig): boolean => {
   const slotName = getColumnSlotName(column)
   const headerSlotName = slotName ? `${slotName}-header` : undefined
   return !!(headerSlotName && slots[headerSlotName])
@@ -324,7 +312,7 @@ const handlePagination = (val: { currentPage: number; pageSize: number }) => {
  * @param row 行数据
  * @param index 行索引
  */
-const handleAction = (event: string, row: any, index: number) => {
+const handleAction = (event: ActionEvent, row: any, index: number) => {
   emit('action', event, row, index)
 }
 
@@ -334,7 +322,7 @@ const handleAction = (event: string, row: any, index: number) => {
  * @param row 行数据
  * @returns 是否可见
  */
-const isButtonVisible = (btn: ActionButton, row: any): boolean => {
+const isButtonVisible = (btn: TableButtonConfig, row: any): boolean => {
   if (typeof btn.visible === 'function') {
     return btn.visible(row)
   }
@@ -347,7 +335,7 @@ const isButtonVisible = (btn: ActionButton, row: any): boolean => {
  * @param row 行数据
  * @returns 按钮属性
  */
-const getButtonProps = (btn: ActionButton, row: any): Record<string, any> => {
+const getButtonProps = (btn: TableButtonConfig, row: any): Record<string, any> => {
   // 根据按钮类型设置默认属性
   const defaultProps: Record<string, any> =
     btn.btnType === 'button'
@@ -376,7 +364,7 @@ const getButtonProps = (btn: ActionButton, row: any): Record<string, any> => {
  * @param column 列配置
  * @returns 绑定到 el-table-column 的属性
  */
-const getColumnBindProps = (column: ColumnConfig) => {
+const getColumnBindProps = (column: TableColumnConfig) => {
   const { type, buttons, ...rest } = column
   const validTypes = ['selection', 'index', 'expand']
 
@@ -390,8 +378,10 @@ const getColumnBindProps = (column: ColumnConfig) => {
 }
 
 // 暴露方法给父组件
+// 暴露窄类型:tableRef 仍指向 el-table 实例(运行时),但声明层收敛为 any,
+// 避免完整的 TableInstance 类型链(含 element-plus 内部路径与 lodash-unified)泄漏进 d.ts
 defineExpose({
-  tableRef
+  tableRef: tableRef as any
 })
 </script>
 

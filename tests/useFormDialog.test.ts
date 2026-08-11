@@ -177,6 +177,83 @@ describe('useFormDialog', () => {
     expect(formRef.resetFields).toHaveBeenCalled()
   })
 
+  it('提交返回业务失败(code 非成功)时提示错误且不执行成功回调', async () => {
+    const addApi = vi.fn().mockResolvedValue({ code: 500, message: '保存失败:库存不足' })
+    const onSubmitSuccess = vi.fn()
+    const onAfterSubmit = vi.fn()
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { name: '' },
+        addApi,
+        updateApi: vi.fn(),
+        onSubmitSuccess,
+        onAfterSubmit,
+        messageApi
+      })
+    )
+    const formRef = createFormRef()
+    hook.formRef.value = formRef
+    hook.formData.value = { name: 'Tom' }
+    hook.dialogVisible.value = true
+
+    await hook.submitForm()
+    await flushPromises()
+
+    expect(addApi).toHaveBeenCalledWith({ name: 'Tom' })
+    expect(messageApi.success).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('保存失败:库存不足')
+    expect(onSubmitSuccess).not.toHaveBeenCalled()
+    expect(onAfterSubmit).not.toHaveBeenCalled()
+    // 弹窗保持打开,便于用户修正后重试
+    expect(hook.dialogVisible.value).toBe(true)
+  })
+
+  it('编辑回显 getApi 返回业务失败时提示错误并关闭弹窗', async () => {
+    const getApi = vi.fn().mockResolvedValue({ code: 401, message: '无权限查看详情' })
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { id: 0, name: '' },
+        idKey: 'id',
+        addApi: vi.fn(),
+        updateApi: vi.fn(),
+        getApi,
+        messageApi
+      })
+    )
+    hook.dialogVisible.value = true
+
+    await hook.openDialog('edit', { id: 1 })
+    await flushPromises()
+
+    expect(messageApi.success).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('无权限查看详情')
+    expect(hook.dialogVisible.value).toBe(false)
+  })
+
+  it('编辑回显缺少主键字段时提示错误且不调用 getApi', async () => {
+    const getApi = vi.fn()
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { id: 0, name: '' },
+        idKey: 'id',
+        addApi: vi.fn(),
+        updateApi: vi.fn(),
+        getApi,
+        messageApi
+      })
+    )
+
+    await hook.openDialog('edit', { name: 'Tom' })
+    await flushPromises()
+
+    expect(getApi).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('编辑回显失败:未找到主键字段 "id"')
+    expect(hook.dialogVisible.value).toBe(false)
+  })
+
   it('编辑模式下提交时调用 updateApi 并执行成功回调', async () => {
     const updateApi = vi.fn().mockResolvedValue({ msg: '更新成功' })
     const onSubmitSuccess = vi.fn()

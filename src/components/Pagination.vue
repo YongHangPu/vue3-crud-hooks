@@ -15,14 +15,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { ElPagination } from 'element-plus';
 import { scrollTo } from '@/utils/scroll-to';
 
 interface Props {
   total?: number;
-  currentPage?: number;
-  pageSize?: number;
   pageSizes?: number[];
   pagerCount?: number;
   layout?: string;
@@ -35,8 +32,6 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   total: 0,
-  currentPage: 1,
-  pageSize: 20,
   pageSizes: () => [10, 20, 30, 50],
   // 移动端页码按钮的数量端默认值5
   pagerCount: () => 7,
@@ -52,28 +47,19 @@ defineOptions({
   inheritAttrs: true
 });
 
-const emit = defineEmits(['update:currentPage', 'update:pageSize', 'pagination']);
-const currentPage = computed({
-  get() {
-    return props.currentPage;
-  },
-  set(val) {
-    emit('update:currentPage', val);
-  }
-});
-const pageSize = computed({
-  get() {
-    return props.pageSize;
-  },
-  set(val) {
-    emit('update:pageSize', val);
-  }
-});
+// defineModel(vue 3.4+ 宏):自动声明 currentPage/pageSize prop 及其 update:currentPage/update:pageSize 事件,
+// 替代手写 computed get/set + emit 的样板代码
+const currentPage = defineModel<number>('currentPage', { default: 1 });
+const pageSize = defineModel<number>('pageSize', { default: 20 });
+const emit = defineEmits(['pagination']);
 function handleSizeChange(val: number) {
-  if (currentPage.value * val > props.total) {
-    currentPage.value = 1;
+  // 先计算目标页码再 emit:pageSize 增大导致超出总页数时重置到第 1 页,
+  // 避免 emit 的 currentPage 与 UI 显示不一致(否则父组件会按旧页码请求空页)
+  const next = currentPage.value * val > props.total ? 1 : currentPage.value
+  if (next !== currentPage.value) {
+    currentPage.value = next
   }
-  emit('pagination', { currentPage: currentPage.value, pageSize: val });
+  emit('pagination', { currentPage: next, pageSize: val });
   if (props.autoScroll) {
     scrollTo(0, 800);
   }

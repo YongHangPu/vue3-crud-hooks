@@ -16,7 +16,8 @@
 - 🔌 **模块解耦** — 可单独使用 `useTablePage` 管理列表，或单独使用 `useFormDialog` 管理弹窗
 - 📦 **Tree Shaking** — 支持子路径按需导入（`vue3-crud-hooks/useTablePage`），不引入冗余代码
 - 🛠 **分层配置** — `apis / table / form / search / advanced` 各层独立，兼顾快速开发与复杂场景
-- 🧠 **自动检测** — 自动识别后端返回的 `rows/data/list` 等常见字段名，零配置接入
+- 🧠 **自动检测** — 自动识别后端返回的 `rows/data/list` 等常见字段名，支持 `{ code, data: { records, total } }` 嵌套包装，零配置接入
+- ✅ **业务码校验** — 默认按 `code ∈ [0, 200, 1, '0', '200', '1']` 判断业务成败，HTTP 200 但业务失败不再误报「成功」；可自定义 `isSuccess`
 - 📝 **TypeScript** — 完备的类型推导，`CustomTable` 支持 el-table 原生属性/事件透传（`@row-click` / `highlight-current-row` 等）
 - 🔄 **数据转换** — 内置数组↔字符串、时间范围、空值清理等转换工具
 - 📢 **消息解耦** — `useMessage` 抽象消息提示，默认 Element Plus，可替换为任意 UI 库
@@ -29,7 +30,7 @@
 pnpm add vue3-crud-hooks
 ```
 
-需要同级安装 `vue@^3` 和 `element-plus@^2`。
+需要同级安装 `vue@^3.5`(库使用了 `defineModel` 特性)和 `element-plus@^2`。运行时依赖 `await-to-js` 已内置打包,无需额外安装。
 
 如果你使用了 `CustomTable` 或 `Pagination` 组件，建议同时引入组件库样式：
 
@@ -253,7 +254,8 @@ interface CrudPageConfig<T> {
     exportUrl?: string                        // 导出下载 URL
     confirmMessage?: string                   // 删除确认提示
     batchConfirmMessage?: string              // 批量删除确认提示
-    onCustomAction?: (event, row, index) => void // 自定义事件处理器
+    onCustomAction?: (event, row, index) => void // 自定义事件处理器（页面级推荐入口）
+    transformResponse?: (res) => { data; total } | null // 自定义列表响应解析（返回 null 回退默认解析）
   }
   form: {
     initialData: T                            // 表单初始值
@@ -271,6 +273,7 @@ interface CrudPageConfig<T> {
     arrayFields?: string[]                    // 数组字段（自动 string[] ↔ 逗号分隔）
     timeFields?: Array<{ field, prefix }>     // 时间范围字段
     messageApi?: Partial<MessageApi>          // 自定义消息 API
+    isSuccess?: (res: any) => boolean         // 业务成功判断（默认识别 code ∈ [0, 200, 1, '0', '200', '1']）
     onDeleteSuccess?: (row: T) => void
     onBatchDeleteSuccess?: (rows: T[]) => void
   }
@@ -301,6 +304,8 @@ interface CrudPageConfig<T> {
 | `autoDetect` | `boolean` | 自动检测响应结构，默认 `true` |
 | `autoFetch` | `boolean` | 自动获取数据，默认 `true` |
 | `beforeSearch` | `(params) => any` | 搜索前参数转换，返回 `false` 阻止请求 |
+| `isSuccess` | `(res) => boolean` | 业务成功判断，默认自动识别 `code ∈ [0, 200, 1, '0', '200', '1']` |
+| `transformResponse` | `(res) => { data, total } \| null` | 自定义列表响应解析，返回 `null` 回退默认解析 |
 | `arrayFields` | `string[]` | 数组字段，搜索时自动 `join(',')` |
 | `timeFields` | `Array` | 时间范围字段，自动拆分为 `startAt`/`endAt` |
 | `exportUrl` | `string` | 导出下载 URL（未配置 exportFunction 时使用） |
@@ -310,6 +315,8 @@ interface CrudPageConfig<T> {
 ### `useFormDialog<T>(config: FormDialogConfig<T>)`
 
 独立表单弹窗管理 Hook。
+
+> 配置项 `FormDialogConfig<T>` 中的表单初始数据支持 `initialData`(推荐,与 `CrudPageConfig.form.initialData` 命名一致)或兼容旧名称 `initialFormData`,二选一,`initialData` 优先。
 
 | 返回值 | 说明 |
 |--------|------|
@@ -443,17 +450,86 @@ const message = useMessage({
 
 ---
 
+### `useTableHeight`
+
+表格自适应高度 Hook：动态计算表格最大高度，使其恰好填满视口剩余空间（表格内部滚动、分页器固定底部），配合 `CustomTable` + `Pagination` 使用。思路借鉴公众号「前端打铁铺」同名文章（作者已开源）。
+
+**纯计算函数 `calculateTableMaxHeight`：**
+
+```typescript
+calculateTableMaxHeight({
+  viewportHeight, tableTop, paginationHeight, extraGap,
+  containerPaddingBottom = 0, minHeight,
+})
+// 可用高度 = 视口高度 - 表格顶部偏移 - 分页器高度 - 额外间距 - 容器底部内边距,与最小高度取最大值
+```
+
+**Composable `useTableHeight(tableRef, paginationRef, options?)`：**
+
+| 返回值 | 说明 |
+|--------|------|
+| `tableMaxHeight` | 表格最大高度（`Ref<number>`，绑定到 `el-table` 的 `height`） |
+| `updateTableMaxHeight()` | 手动重算高度 |
+| `initTableHeightObserver()` | 初始化监听 |
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `minHeight` | `number` | `240` | 表格最小高度（px），极端场景兜底 |
+| `extraGap` | `number` | `24` | 页面额外间距补偿（px） |
+| `containerRef` | `Ref` | — | 表格父容器引用，用于读取 `padding-bottom` |
+| `watchSources` | `Ref[]` | `[]` | 需要监听的响应式数据（如搜索栏展开状态），变化时自动重算 |
+
+**与 `CustomTable` 配合示例（height 直接透传给 el-table）：**
+
+```vue
+<template>
+  <div ref="wrapperRef">
+    <CustomTable
+      v-bind="tableBindings"
+      :height="tableMaxHeight"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useCrudPage, CustomTable, useTableHeight } from 'vue3-crud-hooks'
+
+const tableRef = ref()   // 绑定到 CustomTable 的 ref
+const paginationRef = ref()
+const wrapperRef = ref()
+
+const { tableBindings } = useCrudPage({ /* ... */ })
+
+// 分页器高度变化、窗口缩放、搜索栏展开收起时自动重算表格高度
+const { tableMaxHeight } = useTableHeight(tableRef, paginationRef, {
+  containerRef: wrapperRef,
+  watchSources: [showAdvancedSearch],  // 你的搜索栏状态
+})
+
+// CustomTable 的 height 会透传到内层 el-table:
+// 表格内容区域内部滚动,分页器固定在底部
+</script>
+```
+
+> 说明：`tableRef` 传入 `CustomTable` 组件的 ref（组件实例，内部通过 `$el` 取 DOM）；`paginationRef` 传入 `Pagination` 组件的 ref。若表格/分页器使用原生 DOM 元素，直接传入元素 ref 即可。环境不支持 `ResizeObserver` 时自动降级为仅 `window.resize` 监听。
+
+---
+
 ## 📦 子路径导入
 
 ```typescript
 import { useCrudPage } from 'vue3-crud-hooks'
 import { useTablePage } from 'vue3-crud-hooks/useTablePage'
 import { useFormDialog } from 'vue3-crud-hooks/useFormDialog'
-import { CustomTable } from 'vue3-crud-hooks/CustomTable'
-import { Pagination } from 'vue3-crud-hooks/Pagination'
+import CustomTable from 'vue3-crud-hooks/CustomTable'
+import Pagination from 'vue3-crud-hooks/Pagination'
 import { useDataTransform } from 'vue3-crud-hooks/useDataTransform'
 import { useMessage } from 'vue3-crud-hooks/useMessage'
+import { useTableHeight } from 'vue3-crud-hooks/useTableHeight'
 ```
+
+> 注意:子路径 `vue3-crud-hooks/CustomTable` 与 `vue3-crud-hooks/Pagination` 为组件的 **default 导出**;命名导出 `CustomTable` / `Pagination` 仅通过主入口 `vue3-crud-hooks` 提供。
 
 ---
 

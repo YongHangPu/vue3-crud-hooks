@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { useTablePage } from './useTablePage'
 import { useFormDialog } from './useFormDialog'
 import { useDataTransform } from './useDataTransform'
-import type { CrudPageConfig, CrudPageHook } from '../types'
+import type { CrudPageConfig, CrudPageHook, ActionEvent } from '../types'
 
 /**
  * 通用 CRUD 页面 Hook
@@ -32,6 +32,8 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       arrayFields: advanced.arrayFields,
       timeFields: advanced.timeFields,
       messageApi: advanced.messageApi,
+      isSuccess: advanced.isSuccess,
+      transformResponse: table.transformResponse,
       exportUrl: table.exportUrl
     },
     {
@@ -42,7 +44,8 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       confirmMessage: table.confirmMessage,
       batchConfirmMessage: table.batchConfirmMessage,
       onDeleteSuccess: advanced.onDeleteSuccess,
-      onBatchDeleteSuccess: advanced.onBatchDeleteSuccess
+      onBatchDeleteSuccess: advanced.onBatchDeleteSuccess,
+      isSuccess: advanced.isSuccess
     },
     {
       // 导出配置
@@ -69,6 +72,7 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     },
     onSubmitSuccess: form.onSubmitSuccess,
     messageApi: advanced.messageApi,
+    isSuccess: advanced.isSuccess,
     // 链式数据转换：先处理 arrayFields，再执行用户的 beforeSubmit / afterGet
     dataTransform: {
       beforeSubmit: (data: T) => {
@@ -100,18 +104,16 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 
   /**
    * 处理自定义事件
+   * @description 单一入口:优先 CrudPageConfig.table.onCustomAction(页面级),
+   * 其次兼容 table.config.onCustomAction(组件级,useTablePage 独立使用时配置)
    * @param event 事件名
    * @param row 行数据
    * @param index 行索引
    */
-  const handleCustomAction = (event: string, row: any, index: number) => {
-    if (table.config?.onCustomAction) {
-      table.config.onCustomAction(event, row, index)
-      return
-    }
-
-    if (table.onCustomAction) {
-      table.onCustomAction(event, row, index)
+  const handleCustomAction = (event: ActionEvent, row: any, index: number) => {
+    const handler = table.onCustomAction ?? table.config?.onCustomAction
+    if (handler) {
+      handler(event, row, index)
       return
     }
 
@@ -135,7 +137,7 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
      * @param row 行数据
      * @param index 行索引
      */
-    onAction: (event: string, row: any, index: number) => {
+    onAction: (event: ActionEvent, row: any, index: number) => {
       // 编辑事件特殊处理
       if (event === 'edit') {
         formDialogHook.openDialog('edit', row)
@@ -171,7 +173,7 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
    */
   const handleExport = (options?: { url?: string; filename?: string; params?: any }) => {
     // 直接使用 tablePageHook 的导出方法
-    tablePageHook.handleExport(options)
+    return tablePageHook.handleExport(options)
   }
 
   /**

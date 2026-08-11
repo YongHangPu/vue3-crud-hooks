@@ -15,9 +15,8 @@ export default defineConfig({
       // 指定需要生成类型的目录
       include: ['src'],
       tsconfigPath: './tsconfig.json',
-      outDir: 'dist',
-      // 是否生成类型入口文件
-      insertTypesEntry: true,
+      // vite-plugin-dts 5.x:outDir 更名为 outDirs
+      outDirs: 'dist',
     })
   ],
   build: {
@@ -32,6 +31,7 @@ export default defineConfig({
         useCrudPage: resolve(__dirname, 'src/hooks/useCrudPage.ts'),
         useDataTransform: resolve(__dirname, 'src/hooks/useDataTransform.ts'),
         useMessage: resolve(__dirname, 'src/hooks/useMessage.ts'),
+        useTableHeight: resolve(__dirname, 'src/hooks/useTableHeight.ts'),
         CustomTable: resolve(__dirname, 'src/components/CustomTable.vue'),
         Pagination: resolve(__dirname, 'src/components/Pagination.vue')
       },
@@ -41,13 +41,13 @@ export default defineConfig({
     },
     rollupOptions: {
       // 这些依赖应该由使用该库的项目提供
-      external: ['vue', /element-plus/, 'await-to-js'],
+      // await-to-js 体积小且为运行必需,已内置打包,消费方无需安装
+      external: ['vue', /element-plus/],
       output: {
         // 在 UMD 构建模式下为这些外部化的依赖提供一个全局变量
         globals: {
           vue: 'Vue',
-          'element-plus': 'ElementPlus',
-          'await-to-js': 'to'
+          'element-plus': 'ElementPlus'
         }
       }
     }

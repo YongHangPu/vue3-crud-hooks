@@ -52,6 +52,35 @@ describe('useTablePage', () => {
     )
   })
 
+  it('分页配置为对象时,运行时 pageNum/pageSize 覆盖静态配置(防分页与数据错位)', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 100 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          customTableConfig: {
+            columns: [{ prop: 'name', label: '名称' }],
+            pagination: { pageSize: 20 }
+          }
+        }
+      )
+    )
+
+    // 初始:静态配置生效
+    expect(hook.pageInfo.pageSize).toBe(20)
+
+    // 运行时修改 pageSize,动态值必须覆盖静态配置,避免分页组件显示与请求参数错位
+    hook.handleSizeChange(50)
+    await flushPromises()
+
+    expect(hook.pageInfo.pageSize).toBe(50)
+    expect(hook.tableBindings.value?.config?.pagination?.pageSize).toBe(50)
+    expect(fetchData).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 50 }))
+  })
+
   it('beforeSearch 返回 false 时阻止请求', async () => {
     const fetchData = vi.fn()
     const hook = mountComposable(() =>
@@ -100,6 +129,88 @@ describe('useTablePage', () => {
     expect(hook.pageInfo.total).toBe(1)
   })
 
+  it('支持嵌套包装响应 { code, data: { records, total } } 自动解析', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      code: 200,
+      message: 'ok',
+      data: { records: [{ id: 1, name: 'Tom' }], total: 9 }
+    })
+
+    const hook = mountComposable(() =>
+      useTablePage(fetchData, {}, { autoFetch: false, messageApi: createMessageApi() })
+    )
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 1, name: 'Tom' }])
+    expect(hook.pageInfo.total).toBe(9)
+  })
+
+  it('业务失败(code 非成功)时提示后端消息并清空数据', async () => {
+    const messageApi = createMessageApi()
+    const fetchData = vi.fn().mockResolvedValue({ code: 500, message: '服务器繁忙' })
+
+    const hook = mountComposable(() =>
+      useTablePage(fetchData, {}, { autoFetch: false, messageApi })
+    )
+
+    hook.tableData.value = [{ id: 1 }]
+    hook.pageInfo.total = 5
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([])
+    expect(hook.pageInfo.total).toBe(0)
+    expect(messageApi.success).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('服务器繁忙')
+  })
+
+  it('自定义 isSuccess 覆盖默认业务成功判断', async () => {
+    const messageApi = createMessageApi()
+    // 后端以 code=1 表示成功
+    const fetchData = vi.fn().mockResolvedValue({ code: 1, rows: [{ id: 1 }], total: 1 })
+
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        { autoFetch: false, messageApi, isSuccess: (res) => res?.code === 1 }
+      )
+    )
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 1 }])
+    expect(hook.pageInfo.total).toBe(1)
+  })
+
+  it('transformResponse 接管响应解析,返回 null 时回退默认解析', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      payload: { items: [{ id: 2 }], totalCount: 3 }
+    })
+
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          transformResponse: (res) => ({ data: res.payload.items, total: res.payload.totalCount })
+        }
+      )
+    )
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 2 }])
+    expect(hook.pageInfo.total).toBe(3)
+  })
+
   it('列表请求失败时提示错误并清空数据', async () => {
     const messageApi = createMessageApi()
     const fetchData = vi.fn().mockRejectedValue(new Error('network down'))
@@ -117,6 +228,77 @@ describe('useTablePage', () => {
     expect(messageApi.error).toHaveBeenCalledWith('获取表格数据失败: network down')
     expect(hook.tableData.value).toEqual([])
     expect(hook.pageInfo.total).toBe(0)
+  })
+
+  it('接口返回 null 时按失败处理且不崩溃', async () => {
+    const messageApi = createMessageApi()
+    const fetchData = vi.fn().mockResolvedValue(null)
+
+    const hook = mountComposable(() =>
+      useTablePage(fetchData, {}, { autoFetch: false, messageApi })
+    )
+
+    hook.tableData.value = [{ id: 1 }]
+
+    await hook.getTableData()
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([])
+    expect(messageApi.error).toHaveBeenCalledWith('获取表格数据失败')
+  })
+
+  it('竞态防护:慢的旧请求后返回时不覆盖新数据', async () => {
+    let resolveFirst!: (v: any) => void
+    const first = new Promise((resolve) => {
+      resolveFirst = resolve
+    })
+    const fetchData = vi
+      .fn()
+      .mockImplementationOnce(() => first) // 第一次请求挂起
+      .mockResolvedValue({ rows: [{ id: 2 }], total: 2 }) // 第二次请求立即返回
+
+    const hook = mountComposable(() =>
+      useTablePage(fetchData, {}, { autoFetch: false, messageApi: createMessageApi() })
+    )
+
+    hook.getTableData() // 第一次请求,挂起
+    await hook.getTableData() // 第二次请求,立即完成
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 2 }])
+
+    // 第一次请求姗姗来迟,响应应被丢弃
+    resolveFirst({ rows: [{ id: 1 }], total: 1 })
+    await flushPromises()
+
+    expect(hook.tableData.value).toEqual([{ id: 2 }])
+    expect(hook.pageInfo.total).toBe(2)
+  })
+
+  it('竞态防护:过期请求的失败不提示错误', async () => {
+    let rejectFirst!: (e: unknown) => void
+    const first = new Promise((_, reject) => {
+      rejectFirst = reject
+    })
+    const fetchData = vi
+      .fn()
+      .mockImplementationOnce(() => first) // 第一次请求挂起
+      .mockResolvedValue({ rows: [{ id: 2 }], total: 2 }) // 第二次请求立即返回
+    const messageApi = createMessageApi()
+    const hook = mountComposable(() =>
+      useTablePage(fetchData, {}, { autoFetch: false, messageApi })
+    )
+
+    hook.getTableData() // 第一次请求,挂起
+    await hook.getTableData() // 第二次请求,立即完成
+    await flushPromises()
+
+    rejectFirst(new Error('old request failed'))
+    await flushPromises()
+
+    expect(messageApi.error).not.toHaveBeenCalled()
+    expect(hook.tableData.value).toEqual([{ id: 2 }])
+    expect(hook.pageInfo.total).toBe(2)
   })
 
   it('第 1 页删除最后一条数据不往下回退', async () => {
@@ -142,6 +324,35 @@ describe('useTablePage', () => {
 
     // 第 1 页不应回退到 0
     expect(hook.pageInfo.pageNum).toBe(1)
+  })
+
+  it('配置 onDeleteSuccess 时不自动回退页码(一致性由回调负责)', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [], total: 0 })
+    const deleteApi = vi.fn().mockResolvedValue({ msg: '删除成功' })
+    const onDeleteSuccess = vi.fn()
+    const messageApi = createMessageApi()
+    messageApi.confirm.mockResolvedValue(true)
+
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        { autoFetch: false, messageApi },
+        { deleteApi, onDeleteSuccess }
+      )
+    )
+
+    hook.tableData.value = [{ id: 1 }]
+    hook.pageInfo.pageNum = 2
+
+    await hook.handleDelete({ id: 1 })
+    await flushPromises()
+
+    // 配置回调时不回退页码:列表不自动刷新,页码与数据保持一致,避免错位
+    expect(hook.pageInfo.pageNum).toBe(2)
+    expect(onDeleteSuccess).toHaveBeenCalledWith({ id: 1 })
+    // 未自动刷新
+    expect(fetchData).not.toHaveBeenCalled()
   })
 
   it('自定义 idKey 影响 selectedIds 解析', async () => {
@@ -409,6 +620,44 @@ describe('useTablePage', () => {
     expect(messageApi.warning).toHaveBeenCalledWith('导出功能未配置')
   })
 
+  it('异步 exportFunction 失败时提示导出错误', async () => {
+    const messageApi = createMessageApi()
+    const exportFunction = vi.fn().mockRejectedValue(new Error('download failed'))
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi },
+        {},
+        { exportFunction }
+      )
+    )
+
+    await hook.handleExport()
+    await flushPromises()
+
+    expect(exportFunction).toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('导出失败: download failed')
+  })
+
+  it('异步 exportFunction 成功时正常完成且不报错', async () => {
+    const messageApi = createMessageApi()
+    const exportFunction = vi.fn().mockResolvedValue('ok')
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi },
+        {},
+        { exportFunction }
+      )
+    )
+
+    await expect(hook.handleExport()).resolves.toBeUndefined()
+    expect(exportFunction).toHaveBeenCalled()
+    expect(messageApi.error).not.toHaveBeenCalled()
+  })
+
   it('配置 exportUrl 时使用默认下载链接导出', () => {
     const messageApi = createMessageApi()
     const originalCreateElement = document.createElement.bind(document)
@@ -478,6 +727,24 @@ describe('useTablePage', () => {
     expect(onCustomAction).toHaveBeenCalledWith('view', { id: 1 }, 0)
   })
 
+  it('selection-change 清空时 selectedRows/selectedIds 同步清空(防跨页误删)', async () => {
+    const hook = mountComposable(() =>
+      useTablePage(vi.fn().mockResolvedValue({ rows: [], total: 0 }), {}, {
+        autoFetch: false,
+        messageApi: createMessageApi()
+      })
+    )
+
+    hook.tableBindings.value.onSelectionChange([{ id: 1 }, { id: 2 }])
+    expect(hook.selectedRows.value).toEqual([{ id: 1 }, { id: 2 }])
+    expect(hook.selectedIds.value).toEqual([1, 2])
+
+    // el-table 翻页/数据刷新后清空选择(未启用 reserveSelection 时),选中状态必须同步清空
+    hook.tableBindings.value.onSelectionChange([])
+    expect(hook.selectedRows.value).toEqual([])
+    expect(hook.selectedIds.value).toEqual([])
+  })
+
   it('handleSearch、handleReset、分页方法和列更新按预期工作', async () => {
     const fetchData = vi.fn().mockResolvedValue({ rows: [], total: 0 })
     const hook = mountComposable(() =>
@@ -513,5 +780,29 @@ describe('useTablePage', () => {
     expect(hook.tableBindings.value?.config?.columns).toEqual([{ prop: 'status', label: '状态' }])
     expect(typeof (hook.tableBindings.value?.config?.index as { index?: (value: number) => number }).index).toBe('function')
     expect((hook.tableBindings.value?.config?.index as { index: (value: number) => number }).index(0)).toBe(1)
+  })
+
+  it('setTableColumns 在已渲染(先消费 tableBindings)后仍能更新列配置', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          customTableConfig: { columns: [{ prop: 'name', label: '名称' }] }
+        }
+      )
+    )
+
+    // 模拟组件已渲染:先消费 tableBindings,让 tableConfig 进入缓存状态
+    expect(hook.tableBindings.value?.config?.columns).toEqual([{ prop: 'name', label: '名称' }])
+
+    // 动态更新列配置
+    hook.setTableColumns([{ prop: 'status', label: '状态' }])
+
+    // 缓存已被响应式依赖失效,读取到新列配置
+    expect(hook.tableBindings.value?.config?.columns).toEqual([{ prop: 'status', label: '状态' }])
   })
 })

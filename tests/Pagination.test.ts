@@ -77,6 +77,21 @@ describe('Pagination.vue', () => {
     expect(mocks.scrollToSpy).toHaveBeenCalledWith(0, 800)
   })
 
+  it('修改每页条数导致超出总页数时,分页事件携带重置后的第 1 页', async () => {
+    const wrapper = mount(Pagination, {
+      props: {
+        total: 50,
+        currentPage: 5,
+        pageSize: 10
+      }
+    })
+
+    // 第 5 页、每页 10 条,total=50,切到每页 50 条后只剩 1 页,应重置到第 1 页
+    await wrapper.find('.trigger-size').trigger('click')
+
+    expect(wrapper.emitted('pagination')).toEqual([[{ currentPage: 1, pageSize: 50 }]])
+  })
+
   it('hidden 为 true 时带有隐藏 class', () => {
     const wrapper = mount(Pagination, {
       props: {

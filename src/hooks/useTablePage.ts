@@ -2,7 +2,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { to } from 'await-to-js'
 import { useDataTransform } from './useDataTransform'
 import { useMessage } from './useMessage'
-import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook } from '../types'
+import { extractListResult, getResponseMessage, isBusinessSuccess } from '../utils/response'
+import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook, ActionEvent } from '../types'
 
 /**
  * 表格页面通用hooks
@@ -86,9 +87,12 @@ export const useTablePage = <T = any>(
   }
 
   // 默认删除配置：各接口默认抛出"未配置"错误
-  const defaultDeleteConfig: Required<Omit<DeleteConfig, 'onDeleteSuccess' | 'onBatchDeleteSuccess'>> & {
+  const defaultDeleteConfig: Required<
+    Omit<DeleteConfig, 'onDeleteSuccess' | 'onBatchDeleteSuccess' | 'isSuccess'>
+  > & {
     onDeleteSuccess?: (row: any) => void
     onBatchDeleteSuccess?: (rows: any[]) => void
+    isSuccess?: (result: any) => boolean
   } = {
     deleteApi: async () => {
       throw new Error('删除接口未配置')
@@ -111,7 +115,7 @@ export const useTablePage = <T = any>(
       acc[key] = value
     }
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Partial<TablePageConfig> & Record<string, any>)
 
   const validDeleteConfig = Object.keys(deleteConfig).reduce((acc, key) => {
     const value = deleteConfig[key as keyof DeleteConfig]
@@ -119,7 +123,7 @@ export const useTablePage = <T = any>(
       acc[key] = value
     }
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Partial<DeleteConfig> & Record<string, any>)
 
   const validExportConfig = Object.keys(exportConfig).reduce((acc, key) => {
     const value = exportConfig[key as keyof ExportConfig]
@@ -127,10 +131,14 @@ export const useTablePage = <T = any>(
       acc[key] = value
     }
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Partial<ExportConfig> & Record<string, any>)
 
   // 用户配置合并到默认值上
   const finalConfig: TablePageConfig & typeof defaultConfig = { ...defaultConfig, ...validConfig }
+  // 将表格配置转为响应式,确保 setTableColumns 等动态修改能触发 tableConfig 重算与视图更新
+  if (finalConfig.customTableConfig) {
+    finalConfig.customTableConfig = reactive(finalConfig.customTableConfig) as CustomTableConfig
+  }
   const finalDeleteConfig = { ...defaultDeleteConfig, ...validDeleteConfig }
 
   // 默认导出配置
@@ -152,6 +160,9 @@ export const useTablePage = <T = any>(
   if (!finalExportConfig.exportFunction && config.exportUrl) {
     finalExportConfig.exportFunction = createDefaultExportFunction(config.exportUrl)
   }
+
+  // 请求序号计数器:用于竞态防护,丢弃过期响应
+  let requestSeq = 0
 
   // 表格数据
   const tableData = ref<any[]>([])
@@ -197,57 +208,27 @@ export const useTablePage = <T = any>(
 
   /**
    * 解析接口返回结果
-   * @description 根据配置解析API响应数据，支持自动检测和手动配置两种模式
+   * @description 支持顶层与嵌套包装层(result.data 为对象)两种结构,
+   * 自动检测常见字段名或按配置的 dataKey/totalKey 解析
    * @param result 接口返回结果
    * @returns 解析后的数据和总数
    */
   const parseResult = (result: any) => {
-    if (!finalConfig.autoDetect) {
-      // 不自动检测，直接使用配置的字段名
-      return {
-        data: result[finalConfig.dataKey] || [],
-        total: result[finalConfig.totalKey] || 0
-      }
-    }
-
-    // 自动检测模式：检测常见的数据字段名
-    const dataKeys = ['rows', 'data', 'list', 'records', 'items']
-    const totalKeys = ['total', 'totalCount', 'count', 'totalElements']
-    let data = []
-    let total = 0
-
-    // 检测数据字段
-    for (const key of dataKeys) {
-      if (result[key] && Array.isArray(result[key])) {
-        data = result[key]
-        break
-      }
-    }
-
-    // 检测总数字段
-    for (const key of totalKeys) {
-      if (typeof result[key] === 'number') {
-        total = result[key]
-        break
-      }
-    }
-
-    // 如果没有检测到，尝试使用配置的字段名
-    if (data.length === 0 && result[finalConfig.dataKey]) {
-      data = result[finalConfig.dataKey] || []
-    }
-    if (total === 0 && result[finalConfig.totalKey]) {
-      total = result[finalConfig.totalKey] || 0
-    }
-
-    return { data, total }
+    return extractListResult(result, {
+      dataKey: finalConfig.dataKey,
+      totalKey: finalConfig.totalKey,
+      autoDetect: finalConfig.autoDetect
+    })
   }
 
   /**
    * 获取表格数据
-   * @description 调用接口获取表格数据并更新状态
+   * @description 调用接口获取表格数据并更新状态。
+   * 通过请求序号丢弃过期响应,避免快速搜索/翻页时旧请求覆盖新数据(竞态防护)
    */
   const getTableData = async () => {
+    // 请求序号:本次请求的唯一标识,用于丢弃过期响应
+    const currentSeq = ++requestSeq
     loading.value = true
 
     // 准备请求参数
@@ -286,6 +267,10 @@ export const useTablePage = <T = any>(
       }
 
       const [error, result] = await to(fetchData(requestParams))
+      // 竞态防护:已有更新的请求发出,丢弃本次过期响应
+      if (currentSeq !== requestSeq) {
+        return
+      }
       if (error) {
         tableData.value = []
         pageInfo.total = 0
@@ -293,15 +278,40 @@ export const useTablePage = <T = any>(
         return
       }
 
+      // 业务失败判断:HTTP 200 但业务 code 非成功时按失败处理,避免误报「成功」
+      if (!isBusinessSuccess(result, finalConfig.isSuccess)) {
+        tableData.value = []
+        pageInfo.total = 0
+        showMessage.error(getResponseMessage(result, '获取表格数据失败'))
+        return
+      }
+
+      // 自定义响应解析:返回 { data, total } 时接管默认解析
+      if (finalConfig.transformResponse) {
+        const transformed = finalConfig.transformResponse(result)
+        if (transformed) {
+          tableData.value = Array.isArray(transformed.data) ? transformed.data : []
+          pageInfo.total = typeof transformed.total === 'number' ? transformed.total : 0
+          return
+        }
+      }
+
       const { data, total } = parseResult(result)
       tableData.value = data
       pageInfo.total = total
     } catch (error) {
+      // 竞态防护:过期请求的错误不提示、不更新状态
+      if (currentSeq !== requestSeq) {
+        return
+      }
       tableData.value = []
       pageInfo.total = 0
       showMessage.error(`获取表格数据失败: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
-      loading.value = false
+      // 仅最新请求负责关闭 loading,避免过期请求提前结束加载态
+      if (currentSeq === requestSeq) {
+        loading.value = false
+      }
     }
   }
 
@@ -385,10 +395,17 @@ export const useTablePage = <T = any>(
         return
       }
 
-      showMessage.success(res.msg || '删除成功')
+      // 业务失败判断:HTTP 200 但业务 code 非成功时,不提示成功
+      if (!isBusinessSuccess(res, finalDeleteConfig.isSuccess)) {
+        showMessage.error(getResponseMessage(res, '删除失败'))
+        return
+      }
+
+      showMessage.success(getResponseMessage(res, '删除成功'))
 
       // 如果当前页没有数据了，回到上一页
-      if (tableData.value.length === 1 && pageInfo.pageNum > 1) {
+      // 仅在库自动刷新(未配置 onDeleteSuccess)时才调整页码,避免回调不刷新时页码与数据不一致
+      if (!finalDeleteConfig.onDeleteSuccess && tableData.value.length === 1 && pageInfo.pageNum > 1) {
         pageInfo.pageNum--
       }
 
@@ -426,11 +443,19 @@ export const useTablePage = <T = any>(
       const [error, res] = await to(finalDeleteConfig.batchDeleteApi(deleteIds))
       if (error) {
         showMessage.error(`批量删除失败: ${error instanceof Error ? error.message : String(error)}`)
+      } else if (!isBusinessSuccess(res, finalDeleteConfig.isSuccess)) {
+        // 业务失败:HTTP 200 但业务 code 非成功
+        showMessage.error(getResponseMessage(res, '批量删除失败'))
       } else {
-        showMessage.success(res.msg)
+        showMessage.success(getResponseMessage(res, '批量删除成功'))
 
         // 如果当前页没有数据了，回到上一页
-        if (tableData.value.length <= deleteIds.length && pageInfo.pageNum > 1) {
+        // 仅在库自动刷新(未配置 onBatchDeleteSuccess)时才调整页码,避免回调不刷新时页码与数据不一致
+        if (
+          !finalDeleteConfig.onBatchDeleteSuccess &&
+          tableData.value.length <= deleteIds.length &&
+          pageInfo.pageNum > 1
+        ) {
           pageInfo.pageNum--
         }
         // 保存被删除的行数据，用于回调
@@ -488,10 +513,12 @@ export const useTablePage = <T = any>(
       pagination:
         shouldShowPagination && paginationConfig
           ? {
+              // 注意:先展开用户静态配置,再让运行时动态值(total/currentPage/pageSize)最后覆盖,
+              // 避免用户配置的 pageSize/currentPage 在翻页/改页后反向覆盖动态值导致分页与数据错位
+              ...(typeof paginationConfig === 'object' ? paginationConfig : {}),
               total: pageInfo.total,
               currentPage: pageInfo.pageNum,
-              pageSize: pageInfo.pageSize,
-              ...(typeof paginationConfig === 'object' ? paginationConfig : {})
+              pageSize: pageInfo.pageSize
             }
           : false
     }
@@ -526,17 +553,17 @@ export const useTablePage = <T = any>(
      * @param row 行数据
      * @param index 行索引
      */
-    onAction: (event: string, row: any, index: number) => {
+    onAction: (event: ActionEvent, row: any, index: number) => {
       switch (event) {
         case 'delete':
           handleDelete(row)
           break
         default:
-          // 处理自定义事件
-          if (config.customTableConfig?.onCustomAction) {
-            config.customTableConfig.onCustomAction(event, row, index)
+          // 处理自定义事件(useTablePage 独立使用时的唯一通道)
+          if (finalConfig.customTableConfig?.onCustomAction) {
+            finalConfig.customTableConfig.onCustomAction(event, row, index)
           } else {
-            console.log('未处理的自定义事件:', event, row, index)
+            console.warn('未处理的自定义事件:', event, row, index)
           }
       }
     }
@@ -552,10 +579,10 @@ export const useTablePage = <T = any>(
 
   /**
    * 导出处理
-   * @description 导出表格数据
+   * @description 导出表格数据,支持异步 exportFunction(如 POST + Blob 下载),失败时提示错误
    * @param options 导出配置选项
    */
-  const handleExport = (options: { url?: string; filename?: string; params?: any } = {}) => {
+  const handleExport = async (options: { url?: string; filename?: string; params?: any } = {}) => {
     if (!finalExportConfig.exportFunction) {
       showMessage.warning('导出功能未配置')
       return
@@ -583,12 +610,16 @@ export const useTablePage = <T = any>(
       processed = arrayToString(processed, finalConfig.arrayFields)
     }
 
-    // 调用自定义导出函数
-    finalExportConfig.exportFunction({
-      url,
-      params: processed,
-      filename
-    })
+    // 调用自定义导出函数,支持异步实现(如 POST + Blob)
+    try {
+      await finalExportConfig.exportFunction({
+        url,
+        params: processed,
+        filename
+      })
+    } catch (error) {
+      showMessage.error(`导出失败: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   // 组件挂载时根据配置决定是否自动获取数据

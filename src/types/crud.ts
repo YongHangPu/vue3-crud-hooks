@@ -1,6 +1,6 @@
-import type { TablePageHook, CustomTableConfig } from './table'
+import type { TablePageHook, CustomTableConfig, ActionEvent } from './table'
 import type { FormDialogHook } from './form'
-import type { MessageApi } from './common'
+import type { ApiResponse, ListResult, MessageApi } from './common'
 
 /**
  * CRUD 页面 Hook 返回值接口
@@ -16,17 +16,17 @@ export interface CrudPageConfig<T = any> {
   /** API 接口配置 */
   apis: {
     /** 列表查询接口 */
-    list: (params: any) => Promise<any>
+    list: (params: any) => Promise<ApiResponse<ListResult<T>>>
     /** 新增接口 */
-    add: (data: T) => Promise<any>
+    add: (data: T) => Promise<ApiResponse<any>>
     /** 编辑接口 */
-    update: (data: T) => Promise<any>
+    update: (data: T) => Promise<ApiResponse<any>>
     /** 删除接口（可选） */
-    delete?: (id: any) => Promise<any>
+    delete?: (id: any) => Promise<ApiResponse<any>>
     /** 批量删除接口（可选） */
-    batchDelete?: (ids: any[]) => Promise<any>
+    batchDelete?: (ids: any[]) => Promise<ApiResponse<any>>
     /** 获取详情接口（可选，编辑回显用） */
-    get?: (id: any) => Promise<any>
+    get?: (id: any) => Promise<ApiResponse<T>>
     /** 导出接口（可选） */
     export?: (options: { url?: string; params: any; filename: string }) => Promise<any> | void
   }
@@ -65,15 +65,17 @@ export interface CrudPageConfig<T = any> {
     confirmMessage?: string
     /** 批量删除确认提示文字 */
     batchConfirmMessage?: string
-    /** 自定义事件处理器 */
-    onCustomAction?: (event: string, row: any, index: number) => void
+    /** 自定义事件处理器(useCrudPage 场景推荐配置于此;组件级 CustomTableConfig.onCustomAction 仅 useTablePage 独立使用时生效) */
+    onCustomAction?: (event: ActionEvent, row: any, index: number) => void
+    /** 自定义列表响应解析,返回 { data, total } 时接管默认解析,返回 null/undefined 时回退默认解析 */
+    transformResponse?: (result: any) => { data: any[]; total: number } | null | undefined
   }
   /** 搜索配置 */
   search?: {
     /** 搜索表单初始值 */
-    initialData: any
-    /** 搜索前参数转换，返回 false 阻止请求 */
-    beforeSearch?: (params: any) => any
+    initialData: Record<string, any>
+    /** 搜索前参数转换,返回 false/null/undefined 阻止请求 */
+    beforeSearch?: (params: Record<string, any>) => Record<string, any> | false | null | undefined
   }
   /** 高级配置 */
   advanced?: {
@@ -87,5 +89,7 @@ export interface CrudPageConfig<T = any> {
     onBatchDeleteSuccess?: (deletedRows: any[]) => void
     /** 消息 API */
     messageApi?: Partial<MessageApi>
+    /** 业务成功判断函数,默认自动识别 code 字段([0, 200, 1, '0', '200', '1'] 视为成功) */
+    isSuccess?: (result: any) => boolean
   }
 }

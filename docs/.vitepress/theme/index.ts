@@ -1,7 +1,7 @@
 import { h, defineComponent } from 'vue'
 import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ID_INJECTION_KEY, ZINDEX_INJECTION_KEY } from 'element-plus'
 import { ElementPlusContainer } from '@vitepress-demo-preview/component'
 import '@vitepress-demo-preview/component/dist/style.css'
 import 'element-plus/dist/index.css'
@@ -40,6 +40,9 @@ export default {
   extends: DefaultTheme,
   enhanceApp({ app }) {
     app.use(ElementPlus)
+    // element-plus 在 SSR(vitepress 构建)下渲染弹窗等组件需要 id/z-index provider,否则报 IdInjection/ZIndexInjection 警告
+    app.provide(ID_INJECTION_KEY, { prefix: 100, current: 0 })
+    app.provide(ZINDEX_INJECTION_KEY, { current: 0 })
     app.component('demo-preview', DemoPreview)
   },
 } satisfies Theme

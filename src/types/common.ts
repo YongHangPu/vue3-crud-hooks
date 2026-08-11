@@ -10,7 +10,51 @@ export interface MessageApi {
   /** 警告提示 */
   warning: (msg: string) => void
   /** 确认弹窗，确认时 resolve，取消时 reject */
-  confirm: (msg: string, title?: string, options?: any) => Promise<any>
+  confirm: (msg: string, title?: string, options?: Record<string, any>) => Promise<any>
+}
+
+/**
+ * 后端统一响应包装
+ * @description 覆盖常见的 { code, message/data } 与直接返回数据两种结构
+ * @template T data 字段数据类型
+ */
+export interface ApiResponse<T = any> {
+  /** 业务状态码(0 / 200 等视为成功,可通过 isSuccess 自定义) */
+  code?: number | string
+  /** 提示消息(message / msg 兼容) */
+  message?: string
+  /** 提示消息的另一种常见写法 */
+  msg?: string
+  /** 业务数据 */
+  data?: T
+  [key: string]: any
+}
+
+/**
+ * 分页列表响应数据
+ * @description 覆盖常见后端字段名 rows / list / records / items / data
+ * @template T 列表项类型
+ */
+export interface ListResult<T = any> {
+  /** 列表数据(常见字段名之一) */
+  rows?: T[]
+  /** 列表数据 */
+  list?: T[]
+  /** 列表数据 */
+  records?: T[]
+  /** 列表数据 */
+  items?: T[]
+  /** 列表数据 */
+  data?: T[]
+  /** 总条数(常见字段名之一) */
+  total?: number
+  /** 总条数 */
+  totalCount?: number
+  /** 总条数 */
+  count?: number
+  /** 总条数 */
+  totalElements?: number
+  [key: string]: any
 }
 
 /**

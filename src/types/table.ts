@@ -3,6 +3,17 @@ import type { MessageApi } from './common'
 import type { Ref, ComputedRef } from 'vue'
 
 /**
+ * 内置表格操作事件
+ */
+export type BuiltInActionEvent = 'edit' | 'delete'
+
+/**
+ * 操作事件类型
+ * @description 内置 edit/delete 获得类型提示,同时通过 `string & {}` 允许任意自定义事件名
+ */
+export type ActionEvent = BuiltInActionEvent | (string & {})
+
+/**
  * 分页配置
  */
 export interface PaginationConfig {
@@ -33,8 +44,8 @@ export interface PaginationConfig {
 export interface TableButtonConfig<T = any> {
   /** 按钮文本 */
   btnText?: string
-  /** 触发的事件名 */
-  event: string
+  /** 触发的事件名(内置 edit/delete,可自定义) */
+  event: ActionEvent
   /** 按钮展现类型 */
   btnType?: 'link' | 'button'
   /** 按钮样式类型 */
@@ -47,6 +58,11 @@ export interface TableButtonConfig<T = any> {
   props?: Record<string, any>
   [key: string]: any
 }
+
+/**
+ * 操作按钮配置(btnText 必填,用于 action 列渲染)
+ */
+export type ActionButton<T = any> = TableButtonConfig<T> & { btnText: string }
 
 /**
  * 表格列配置
@@ -75,8 +91,8 @@ export interface TableColumnConfig<T = any> {
   showOverflowTooltip?: boolean
   /** 自定义格式化函数 */
   formatter?: (row: T, column: any, cellValue: any, index: number) => any
-  /** 操作按钮（仅 type='action' 时有效） */
-  buttons?: Array<TableButtonConfig<T>>
+  /** 操作按钮(仅 type='action' 时有效,btnText 必填) */
+  buttons?: Array<ActionButton<T>>
   /** 是否隐藏该列 */
   hidden?: boolean
   /** 列是否可排序 */
@@ -108,8 +124,8 @@ export interface CustomTableConfig {
   columns: Array<TableColumnConfig>
   /** 分页配置（false 隐藏分页） */
   pagination?: boolean | PaginationConfig
-  /** 自定义操作事件处理器 */
-  onCustomAction?: (event: string, row: any, index: number) => void
+  /** 自定义操作事件处理器(仅 useTablePage 独立使用时生效;useCrudPage 场景请配置 CrudPageConfig.table.onCustomAction) */
+  onCustomAction?: (event: ActionEvent, row: any, index: number) => void
   /** 透传给 el-table 的属性（border, stripe, height 等） */
   props?: Record<string, any>
   [key: string]: any
@@ -154,8 +170,8 @@ export interface TablePageHook<T = any> {
   handleDelete: (row: T) => Promise<void>
   /** 批量删除选中行 */
   handleBatchDelete: () => Promise<void>
-  /** 导出数据 */
-  handleExport: (options?: { url?: string; filename?: string; params?: any }) => void
+  /** 导出数据,支持异步 exportFunction */
+  handleExport: (options?: { url?: string; filename?: string; params?: any }) => Promise<void>
   /** 可通过 v-bind="tableBindings" 绑定到 CustomTable */
   tableBindings: ComputedRef<Record<string, any>>
   /** 动态更新列配置 */
@@ -174,9 +190,13 @@ export interface TablePageConfig {
   autoDetect?: boolean
   /** 是否自动获取数据，默认为 true */
   autoFetch?: boolean
-  /** 搜索参数预处理函数 */
-  beforeSearch?: (params: any) => any
-  /** CustomTable 组件配置 */
+  /** 搜索参数预处理函数:返回 false/null/undefined 时阻止请求;返回对象时将作为请求参数(整体替换 searchParams) */
+  beforeSearch?: (params: Record<string, any>) => Record<string, any> | false | null | undefined
+  /** 业务成功判断函数,默认自动识别 code 字段([0, 200, 1, '0', '200', '1'] 视为成功) */
+  isSuccess?: (result: any) => boolean
+  /** 自定义列表响应解析,返回 { data, total } 时接管默认解析,返回 null/undefined 时回退默认解析 */
+  transformResponse?: (result: any) => { data: any[]; total: number } | null | undefined
+  /** CustomTable 组件配置(内部转为响应式;动态更新列配置请使用 useTablePage 的 setTableColumns,直接修改原始配置对象不会触发视图更新) */
   customTableConfig?: CustomTableConfig
   /** 数组字段，用于数据转换 */
   arrayFields?: string[]
@@ -202,18 +222,20 @@ export interface DeleteConfig {
   confirmMessage?: string
   /** 批量删除确认提示文字 */
   batchConfirmMessage?: string
-  /** 删除成功回调 */
+  /** 删除成功回调(配置后库不再自动刷新列表;若需保持页码与数据一致,请在回调内自行调用 getTableData 或刷新) */
   onDeleteSuccess?: (deletedRow: any) => void
-  /** 批量删除成功回调 */
+  /** 批量删除成功回调(配置后库不再自动刷新列表;若需保持页码与数据一致,请在回调内自行调用 getTableData 或刷新) */
   onBatchDeleteSuccess?: (deletedRows: any[]) => void
+  /** 业务成功判断函数,默认自动识别 code 字段 */
+  isSuccess?: (result: any) => boolean
 }
 
 /**
  * 导出配置
  */
 export interface ExportConfig {
-  /** 导出函数 */
-  exportFunction?: (options: { url?: string; params: any; filename: string }) => void
+  /** 导出函数,支持异步实现(如 POST + Blob 下载) */
+  exportFunction?: (options: { url?: string; params: any; filename: string }) => Promise<any> | void
   /** 数组字段，导出时转换为字符串 */
   arrayFields?: string[]
   /** 时间字段，导出时处理 */
