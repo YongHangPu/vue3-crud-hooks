@@ -77,7 +77,7 @@ describe('useTablePage', () => {
     await flushPromises()
 
     expect(hook.pageInfo.pageSize).toBe(50)
-    expect(hook.tableBindings.value?.config?.pagination?.pageSize).toBe(50)
+    expect((hook.tableBindings.value?.config?.pagination as { pageSize?: number } | undefined)?.pageSize).toBe(50)
     expect(fetchData).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 50 }))
   })
 
@@ -804,5 +804,314 @@ describe('useTablePage', () => {
 
     // 缓存已被响应式依赖失效,读取到新列配置
     expect(hook.tableBindings.value?.config?.columns).toEqual([{ prop: 'status', label: '状态' }])
+  })
+
+  it('sortable 启用后排序变化以默认映射并入请求参数', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          sortable: true
+        }
+      )
+    )
+
+    hook.handleSortChange({ prop: 'name', order: 'ascending' })
+    await flushPromises()
+
+    expect(hook.sortInfo).toEqual({ prop: 'name', order: 'ascending' })
+    // 默认映射:RuoYi 风格 orderByColumn / isAsc
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ orderByColumn: 'name', isAsc: 'asc' })
+    )
+    // 排序后页码重置为 1
+    expect(hook.pageInfo.pageNum).toBe(1)
+    // tableBindings 携带排序事件处理器
+    expect(typeof hook.tableBindings.value?.onSortChange).toBe('function')
+  })
+
+  it('sortable 降序时 isAsc 为 desc,取消排序后不并入排序参数', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          sortable: true
+        }
+      )
+    )
+
+    hook.handleSortChange({ prop: 'name', order: 'descending' })
+    await flushPromises()
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ orderByColumn: 'name', isAsc: 'desc' })
+    )
+
+    // 取消排序:order 为 null,请求不再携带排序参数
+    hook.handleSortChange({ prop: 'name', order: null })
+    await flushPromises()
+    expect(fetchData).toHaveBeenLastCalledWith({ pageNum: 1, pageSize: 10 })
+  })
+
+  it('sortable 为函数时使用自定义排序参数映射', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const customSort = vi.fn((sort: any) => ({ sortField: sort.prop, sortOrder: sort.order }))
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          sortable: customSort
+        }
+      )
+    )
+
+    hook.handleSortChange({ prop: 'age', order: 'descending' })
+    await flushPromises()
+
+    expect(customSort).toHaveBeenCalledWith({ prop: 'age', order: 'descending' })
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortField: 'age', sortOrder: 'descending' })
+    )
+  })
+
+  it('filterable 启用后筛选变化并入请求参数并合并多列状态', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          filterable: true
+        }
+      )
+    )
+
+    hook.handleFilterChange({ status: ['active'] })
+    await flushPromises()
+    expect(hook.filterInfo).toEqual({ status: ['active'] })
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: ['active'] })
+    )
+    expect(typeof hook.tableBindings.value?.onFilterChange).toBe('function')
+
+    // Element Plus 每次仅返回变化的列,应合并保留其他列筛选状态
+    hook.handleFilterChange({ type: ['a', 'b'] })
+    await flushPromises()
+    expect(hook.filterInfo).toEqual({ status: ['active'], type: ['a', 'b'] })
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: ['active'], type: ['a', 'b'] })
+    )
+  })
+
+  it('handleReset 清空排序与筛选状态,重置后的请求不携带排序参数', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        { keyword: 'x' },
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          sortable: true,
+          filterable: true
+        }
+      )
+    )
+
+    hook.handleSortChange({ prop: 'name', order: 'ascending' })
+    hook.handleFilterChange({ status: ['active'] })
+    await flushPromises()
+
+    hook.handleReset()
+    await flushPromises()
+
+    expect(hook.sortInfo.prop).toBe('')
+    expect(hook.sortInfo.order).toBeNull()
+    expect(Object.keys(hook.filterInfo)).toHaveLength(0)
+    expect(fetchData).toHaveBeenLastCalledWith({ pageNum: 1, pageSize: 10, keyword: 'x' })
+  })
+
+  it('未启用 sortable/filterable 时,排序筛选状态变化不并入请求参数', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi()
+        }
+      )
+    )
+
+    hook.handleSortChange({ prop: 'name', order: 'ascending' })
+    hook.handleFilterChange({ status: ['active'] })
+    await flushPromises()
+
+    expect(fetchData).toHaveBeenLastCalledWith({ pageNum: 1, pageSize: 10 })
+  })
+
+  it('toggleColumn 切换列显隐并同步到 tableBindings 配置', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ rows: [{ id: 1 }], total: 1 })
+    const hook = mountComposable(() =>
+      useTablePage(
+        fetchData,
+        {},
+        {
+          autoFetch: false,
+          messageApi: createMessageApi(),
+          customTableConfig: {
+            columns: [
+              { prop: 'name', label: '名称' },
+              { prop: 'email', label: '邮箱' }
+            ]
+          }
+        }
+      )
+    )
+
+    // 初始全部可见
+    expect(hook.getVisibleColumns().map((c) => c.prop)).toEqual(['name', 'email'])
+
+    // 缺省:取反当前状态 → 隐藏 name
+    hook.toggleColumn('name')
+    expect(hook.getVisibleColumns().map((c) => c.prop)).toEqual(['email'])
+    // 响应式同步到 tableBindings 的 config
+    expect(hook.tableBindings.value?.config?.columns?.[0]?.hidden).toBe(true)
+
+    // 指定 visible=false → 隐藏 email
+    hook.toggleColumn('email', false)
+    expect(hook.getVisibleColumns()).toHaveLength(0)
+
+    // 指定 visible=true → 显示 name
+    hook.toggleColumn('name', true)
+    expect(hook.getVisibleColumns().map((c) => c.prop)).toEqual(['name'])
+
+    // 不存在的列:静默忽略,不抛错
+    expect(() => hook.toggleColumn('not-exist')).not.toThrow()
+  })
+
+  it('导出期间 exportLoading 为 true,完成后恢复 false', async () => {
+    let resolveExport!: (v: any) => void
+    const exportFunction = vi.fn().mockImplementation(() => new Promise((resolve) => { resolveExport = resolve }))
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi: createMessageApi() },
+        {},
+        { exportFunction }
+      )
+    )
+
+    const promise = hook.handleExport({ filename: 'users' })
+    expect(hook.exportLoading.value).toBe(true)
+
+    resolveExport('ok')
+    await promise
+    expect(hook.exportLoading.value).toBe(false)
+  })
+
+  it('exportFunction 返回 Blob 时自动触发浏览器下载并执行 onExportSuccess', async () => {
+    const createObjectURL = vi.fn(() => 'blob:mock-url')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL } as any)
+    const clickSpy = vi.fn()
+    const originalCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+      if (tagName === 'a') {
+        return { href: '', download: '', click: clickSpy } as unknown as HTMLAnchorElement
+      }
+      return originalCreateElement(tagName)
+    }) as typeof document.createElement)
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
+    vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node)
+
+    const blob = new Blob(['data'], { type: 'text/csv' })
+    const exportFunction = vi.fn().mockResolvedValue(blob)
+    const onExportSuccess = vi.fn()
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi: createMessageApi() },
+        {},
+        { exportFunction, onExportSuccess }
+      )
+    )
+
+    await hook.handleExport({ filename: 'users.csv' })
+
+    expect(createObjectURL).toHaveBeenCalledWith(blob)
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
+    expect(onExportSuccess).toHaveBeenCalledWith(blob)
+    vi.unstubAllGlobals()
+  })
+
+  it('exportFunction 返回 { blob } 包装时自动触发下载', async () => {
+    const createObjectURL = vi.fn(() => 'blob:mock-url')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL } as any)
+    const clickSpy = vi.fn()
+    const originalCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+      if (tagName === 'a') {
+        return { href: '', download: '', click: clickSpy } as unknown as HTMLAnchorElement
+      }
+      return originalCreateElement(tagName)
+    }) as typeof document.createElement)
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
+    vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node)
+
+    const exportFunction = vi.fn().mockResolvedValue({ blob: new Blob(['x']) })
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi: createMessageApi() },
+        {},
+        { exportFunction }
+      )
+    )
+
+    await hook.handleExport({ filename: 'data.xlsx' })
+
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('配置 onExportError 时导出失败交给回调且不再提示默认错误', async () => {
+    const messageApi = createMessageApi()
+    const exportFunction = vi.fn().mockRejectedValue(new Error('boom'))
+    const onExportError = vi.fn()
+    const hook = mountComposable(() =>
+      useTablePage(
+        vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+        {},
+        { autoFetch: false, messageApi },
+        {},
+        { exportFunction, onExportError }
+      )
+    )
+
+    await hook.handleExport()
+
+    expect(onExportError).toHaveBeenCalledWith(expect.any(Error))
+    expect(messageApi.error).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 })

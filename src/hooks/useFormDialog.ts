@@ -1,4 +1,4 @@
-import { ref, nextTick, toRaw, type Ref } from 'vue'
+import { ref, computed, nextTick, toRaw, type Ref } from 'vue'
 import { to } from 'await-to-js'
 import { useMessage } from './useMessage'
 import { getResponseMessage, isBusinessSuccess } from '../utils/response'
@@ -19,6 +19,8 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
   const dialogMode = ref<'add' | 'edit'>('add')
   // 表单引用
   const formRef = ref()
+  // 表单验证规则(响应式,可直接绑定到 el-form 的 :rules)
+  const formRules = computed(() => config.formRules)
   // 提交加载状态
   const submitLoading = ref(false)
   // 表单数据加载状态（编辑时获取数据）
@@ -209,6 +211,7 @@ export const useFormDialog = <T = any>(config: FormDialogConfig<T>): FormDialogH
     dialogVisible,
     dialogMode,
     formRef,
+    formRules,
     submitLoading,
     formLoading,
     formData,

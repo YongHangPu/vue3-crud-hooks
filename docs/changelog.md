@@ -1,4 +1,8 @@
-# Changelog
+# 更新日志（Changelog）
+
+> 完整更新记录同步自仓库根目录 [`CHANGELOG.md`](https://github.com/YongHangPu/vue3-crud-hooks/blob/main/CHANGELOG.md)，按版本倒序排列。
+
+---
 
 ## [1.2.0] - 2026-08-12
 

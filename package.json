@@ -1,6 +1,6 @@
 {
   "name": "vue3-crud-hooks",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "基于 Vue 3 和 Element Plus 的 CRUD 工具库",
   "type": "module",
   "author": "YongHangPu",
@@ -94,8 +94,9 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:coverage:zh": "pnpm test:coverage && node ./scripts/coverage-zh.mjs",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "sync:changelog": "node ./scripts/sync-changelog.mjs",
+    "docs:dev": "node ./scripts/sync-changelog.mjs && vitepress dev docs",
+    "docs:build": "node ./scripts/sync-changelog.mjs && vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "peerDependencies": {

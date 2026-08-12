@@ -33,13 +33,23 @@ useCrudPage<T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 | `getTableData` | `() => Promise<void>` | 手动刷新列表 |
 | `handleSearch` | `() => void` | 搜索（页码重置为 1 后刷新） |
 | `handleReset` | `() => void` | 重置搜索条件并刷新 |
+| `handleSelectionChange` | `(selection) => void` | 选择变化 |
+| `sortInfo` | `Reactive` | 服务端排序信息 `{ prop, order }`（启用 `sortable` 后维护） |
+| `filterInfo` | `Reactive` | 服务端筛选信息 `{ [prop]: values[] }`（启用 `filterable` 后维护） |
+| `handleSortChange` | `(sort) => void` | 排序变化处理（更新 `sortInfo` 并刷新） |
+| `handleFilterChange` | `(filters) => void` | 筛选变化处理（合并更新 `filterInfo` 并刷新） |
 | `handleDelete` | `(row: T) => Promise<void>` | 弹出确认框后删除 |
 | `handleBatchDelete` | `() => Promise<void>` | 批量删除选中行 |
 | `handleExport` | `(options?) => void` | 导出数据（自动合并搜索参数与选中 ID） |
+| `exportLoading` | `Ref<boolean>` | 导出操作加载状态 |
+| `setTableColumns` | `(columns) => void` | 动态更新列配置 |
+| `toggleColumn` | `(prop, visible?) => void` | 切换列显隐（`visible` 缺省时取反当前状态） |
+| `getVisibleColumns` | `() => TableColumnConfig[]` | 获取当前可见列 |
 | `dialogVisible` | `Ref<boolean>` | 弹窗显示状态（支持 v-model） |
 | `dialogMode` | `Ref<'add' \| 'edit'>` | 弹窗模式 |
 | `formData` | `Ref<T>` | 表单数据 |
 | `formRef` | `Ref` | el-form 引用（需手动绑定） |
+| `formRules` | `ComputedRef` | 表单校验规则（绑定到 el-form 的 `:rules`） |
 | `submitLoading` | `Ref<boolean>` | 提交按钮加载状态 |
 | `formLoading` | `Ref<boolean>` | 编辑回显加载状态 |
 | `openDialog` | `(mode, row?) => void` | 打开弹窗 |
@@ -73,6 +83,9 @@ useCrudPage<T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 | `autoDetect` | `boolean` | `true` | 是否自动检测响应数据结构 |
 | `exportUrl` | `string` | — | 导出下载 URL（未配置 export 接口时使用） |
 | `onCustomAction` | `(event, row, index) => void` | — | 自定义事件处理器 |
+| `transformResponse` | `(result) => { data, total } \| null` | — | 自定义列表响应解析，返回 `null`/`undefined` 回退默认解析 |
+| `sortable` | `boolean \| (sort) => params` | — | 服务端排序：`true` 启用默认映射（`{ orderByColumn, isAsc }`），传函数可自定义映射 |
+| `filterable` | `boolean \| (filters) => params` | — | 服务端筛选：`true` 启用（筛选值数组展开进请求），传函数可自定义映射 |
 
 #### `form` — 表单配置
 
@@ -101,12 +114,15 @@ useCrudPage<T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
 | `messageApi` | `Partial<MessageApi>` | 自定义消息提示 API |
 | `onDeleteSuccess` | `(row) => void` | 单行删除成功回调 |
 | `onBatchDeleteSuccess` | `(rows) => void` | 批量删除成功回调 |
+| `isSuccess` | `(result) => boolean` | 业务成功判断，默认自动识别 `code ∈ [0, 200, 1, '0', '200', '1']` |
+| `onExportSuccess` | `(result) => void` | 导出成功回调（`apis.export` resolve 后触发） |
+| `onExportError` | `(error) => void` | 导出失败回调（不配置时默认提示错误消息） |
 
 ## 配置详解
 
 ### apis：接口定义
 
-CrudPage 围绕五个核心接口展开，全部通过 `apis` 配置：
+CrudPage 围绕七个核心接口展开，全部通过 `apis` 配置：
 
 ```typescript
 useCrudPage({
@@ -123,7 +139,7 @@ useCrudPage({
     batchDelete: (ids) => request.post('/api/users/batch-delete', { ids }),
     // 可选：获取详情（编辑时回显）
     get: (id) => request.get(`/api/users/${id}`),
-    // 可选：导出
+    // 可选：导出（返回 Blob 或 { blob } 时库自动触发浏览器下载）
     export: ({ params }) => request.download('/api/users/export', params),
   }
 })

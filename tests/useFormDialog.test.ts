@@ -330,4 +330,18 @@ describe('useFormDialog', () => {
 
     expect(addApi).not.toHaveBeenCalled()
   })
+
+  it('暴露 formRules 供模板绑定到 el-form 的 :rules', () => {
+    const rules = { name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }
+    const hook = mountComposable(() =>
+      useFormDialog({
+        initialFormData: { name: '' },
+        addApi: vi.fn(),
+        updateApi: vi.fn(),
+        formRules: rules
+      })
+    )
+
+    expect(hook.formRules.value).toBe(rules)
+  })
 })

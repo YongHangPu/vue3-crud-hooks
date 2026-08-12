@@ -100,3 +100,16 @@ const addRow = () => {
   tableData.value.unshift({ id: newId, name: `New ${newId}`, status: 'active', value: 0 })
 }
 </script>
+
+<style scoped>
+/* 文档预览:约束表格高度(容器基准),避免分页器溢出预览区域 */
+.demo-container {
+  height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+.demo-container .custom-table-container {
+  flex: 1;
+  min-height: 0;
+}
+</style>

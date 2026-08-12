@@ -1,4 +1,4 @@
-import type { TablePageHook, CustomTableConfig, ActionEvent } from './table'
+import type { TablePageHook, CustomTableConfig, ActionEvent, SortInfo } from './table'
 import type { FormDialogHook } from './form'
 import type { ApiResponse, ListResult, MessageApi } from './common'
 
@@ -67,6 +67,10 @@ export interface CrudPageConfig<T = any> {
     batchConfirmMessage?: string
     /** 自定义事件处理器(useCrudPage 场景推荐配置于此;组件级 CustomTableConfig.onCustomAction 仅 useTablePage 独立使用时生效) */
     onCustomAction?: (event: ActionEvent, row: any, index: number) => void
+    /** 服务端排序:true 启用默认参数映射({ orderByColumn: prop, isAsc: 'asc' | 'desc' }),或传函数自定义映射(返回 null/undefined 时不并入请求) */
+    sortable?: boolean | ((sort: SortInfo) => Record<string, any> | null | undefined)
+    /** 服务端筛选:true 启用(筛选值数组原样展开进请求参数),或传函数自定义映射(返回 null/undefined 时不并入请求) */
+    filterable?: boolean | ((filters: Record<string, any[]>) => Record<string, any> | null | undefined)
     /** 自定义列表响应解析,返回 { data, total } 时接管默认解析,返回 null/undefined 时回退默认解析 */
     transformResponse?: (result: any) => { data: any[]; total: number } | null | undefined
   }
@@ -91,5 +95,9 @@ export interface CrudPageConfig<T = any> {
     messageApi?: Partial<MessageApi>
     /** 业务成功判断函数,默认自动识别 code 字段([0, 200, 1, '0', '200', '1'] 视为成功) */
     isSuccess?: (result: any) => boolean
+    /** 导出成功回调(apis.export resolve 后触发;返回 Blob 或 { blob } 时已自动触发浏览器下载) */
+    onExportSuccess?: (result: any) => void
+    /** 导出失败回调(apis.export reject 时触发;不配置时默认提示错误消息) */
+    onExportError?: (error: any) => void
   }
 }

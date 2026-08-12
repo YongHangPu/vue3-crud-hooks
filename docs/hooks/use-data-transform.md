@@ -106,6 +106,32 @@ convertNumbers({ age: '18', price: '99.9' }, ['age', 'price'])
 // → { age: 18, price: 99.9 }
 ```
 
+### addDateRange(params, dateRange, fieldConfig?)
+
+将日期范围写入查询参数 `params.params` 子对象（兼容 RuoYi 风格后端 `params` 参数）。
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `params` | `Record<string, any>` | — | 查询参数对象（字段写入其 `params` 子对象） |
+| `dateRange` | `[start, end]` | — | 日期范围数组 |
+| `fieldConfig` | `string \| { start, end }` | — | 字段名配置 |
+
+```typescript
+import { addDateRange } from 'vue3-crud-hooks'
+
+addDateRange({ pageNum: 1, pageSize: 10 }, ['2024-01-01', '2024-01-31'])
+// → { pageNum: 1, pageSize: 10, params: { beginTime: '2024-01-01', endTime: '2024-01-31' } }
+```
+
+**传对象**：精确指定字段名
+
+```typescript
+addDateRange({}, ['2024-01-01', '2024-01-31'], { start: 'startAt', end: 'endAt' })
+// → { params: { startAt: '2024-01-01', endAt: '2024-01-31' } }
+```
+
+> ⚠️ 注意：`addDateRange` 会**直接修改**传入的 `params` 对象（写入 `params.params` 子对象），与 `processTimeRange` 的纯函数风格不同。
+
 ## 在线演示
 
 ::: preview

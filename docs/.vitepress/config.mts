@@ -27,6 +27,7 @@ export default defineConfig({
           { text: 'useTablePage', link: '/hooks/use-table-page' },
           { text: 'useFormDialog', link: '/hooks/use-form-dialog' },
           { text: 'useDataTransform', link: '/hooks/use-data-transform' },
+          { text: 'useTableHeight', link: '/hooks/use-table-height' },
           { text: 'useMessage', link: '/hooks/use-message' },
         ]
       },
@@ -37,6 +38,7 @@ export default defineConfig({
           { text: 'Pagination', link: '/components/pagination' },
         ]
       },
+      { text: '更新日志', link: '/changelog' },
       {
         text: 'GitHub',
         link: 'https://github.com/YongHangPu/vue3-crud-hooks'
@@ -48,7 +50,8 @@ export default defineConfig({
         text: '介绍',
         items: [
           { text: '快速开始', link: '/' },
-          { text: '架构说明', link: '/architecture' }
+          { text: '架构说明', link: '/architecture' },
+          { text: '更新日志', link: '/changelog' }
         ]
       },
       {
@@ -58,6 +61,7 @@ export default defineConfig({
           { text: 'useTablePage（列表管理）', link: '/hooks/use-table-page' },
           { text: 'useFormDialog（表单弹窗）', link: '/hooks/use-form-dialog' },
           { text: 'useDataTransform（数据转换）', link: '/hooks/use-data-transform' },
+          { text: 'useTableHeight（表格高度）', link: '/hooks/use-table-height' },
           { text: 'useMessage（消息提示）', link: '/hooks/use-message' },
         ]
       },

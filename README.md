@@ -217,13 +217,22 @@ const config: CustomTableConfig = {
 | `getTableData` | 手动刷新列表 | `() => Promise<void>` |
 | `handleSearch` | 搜索（重置页码后刷新） | `() => void` |
 | `handleReset` | 重置搜索条件 | `() => void` |
+| `sortInfo` | 服务端排序信息 `{ prop, order }`（启用 `sortable` 后维护） | `Reactive` |
+| `filterInfo` | 服务端筛选信息 `{ [prop]: values[] }` | `Reactive` |
+| `handleSortChange` | 排序变化处理 | `(sort) => void` |
+| `handleFilterChange` | 筛选变化处理 | `(filters) => void` |
 | `handleDelete` | 单行删除 | `(row: T) => Promise<void>` |
 | `handleBatchDelete` | 批量删除 | `() => Promise<void>` |
 | `handleExport` | 导出数据 | `(options?) => void` |
+| `exportLoading` | 导出操作加载状态 | `Ref<boolean>` |
+| `setTableColumns` | 动态更新列配置 | `(columns) => void` |
+| `toggleColumn` | 切换列显隐（`visible` 缺省取反） | `(prop, visible?) => void` |
+| `getVisibleColumns` | 获取当前可见列 | `() => TableColumnConfig[]` |
 | `dialogVisible` | 弹窗显示状态 | `Ref<boolean>` |
 | `dialogMode` | 弹窗模式 `'add' \| 'edit'` | `Ref` |
 | `formData` | 表单数据 | `Ref<T>` |
 | `formRef` | 表单实例引用 | `Ref<any>` |
+| `formRules` | 表单校验规则（绑定到 el-form `:rules`） | `ComputedRef` |
 | `submitLoading` | 提交加载状态 | `Ref<boolean>` |
 | `formLoading` | 编辑回显加载状态 | `Ref<boolean>` |
 | `openDialog` | 打开弹窗 | `(mode, row?) => Promise<void>` |
@@ -310,6 +319,26 @@ interface CrudPageConfig<T> {
 | `timeFields` | `Array` | 时间范围字段，自动拆分为 `startAt`/`endAt` |
 | `exportUrl` | `string` | 导出下载 URL（未配置 exportFunction 时使用） |
 
+**返回值：**
+
+| 返回值 | 说明 | 类型 |
+|-------|------|------|
+| `tableBindings` | 一键绑定到 `CustomTable`（含 `config`/`data`/`loading` + 事件） | `ComputedRef` |
+| `tableData` | 表格数据 | `Ref<T[]>` |
+| `loading` | 加载状态 | `Ref<boolean>` |
+| `deleteLoading` | 删除操作加载状态 | `Ref<boolean>` |
+| `pageInfo` | 分页信息 `{ pageNum, pageSize, total }` | `Reactive` |
+| `searchParams` | 搜索参数（响应式，可直接绑定表单） | `Reactive` |
+| `selectedRows` / `selectedIds` | 选中行数据 / ID 列表 | `Ref` |
+| `sortInfo` / `filterInfo` | 服务端排序 / 筛选信息（启用 `sortable`/`filterable` 后维护） | `Reactive` |
+| `getTableData` | 手动刷新列表 | `() => Promise<void>` |
+| `handleSearch` / `handleReset` | 搜索 / 重置 | `() => void` |
+| `handleSortChange` / `handleFilterChange` | 排序 / 筛选变化处理 | `(sort) => void` / `(filters) => void` |
+| `handleDelete` / `handleBatchDelete` | 删除 / 批量删除 | `(row) => Promise<void>` / `() => Promise<void>` |
+| `handleExport` / `exportLoading` | 导出 / 导出加载状态 | `(options?) => void` / `Ref<boolean>` |
+| `setTableColumns` | 动态更新列配置 | `(columns) => void` |
+| `toggleColumn` / `getVisibleColumns` | 列显隐切换 / 获取可见列 | `(prop, visible?) => void` / `() => TableColumnConfig[]` |
+
 ---
 
 ### `useFormDialog<T>(config: FormDialogConfig<T>)`
@@ -321,7 +350,7 @@ interface CrudPageConfig<T> {
 | 返回值 | 说明 |
 |--------|------|
 | `dialogVisible` / `dialogMode` | 弹窗状态 |
-| `formData` / `formRef` | 表单数据与引用 |
+| `formData` / `formRef` / `formRules` | 表单数据、引用与校验规则（`formRules` 绑定到 el-form `:rules`） |
 | `submitLoading` / `formLoading` | 加载状态 |
 | `openDialog(mode, row?)` | 打开弹窗（编辑模式自动回显） |
 | `submitForm()` | 验证 + 转换 + 提交 |
@@ -340,8 +369,27 @@ interface CrudPageConfig<T> {
 | `data` | `any[]` | `[]` | 表格数据 |
 | `loading` | `boolean` | `false` | 加载状态 |
 | `props` | `Partial<TableProps>` | `{}` | 透传给 el-table 的属性（border, stripe 等） |
+| `autoHeight` | `boolean \| AutoHeightOptions` | `true` | 表格自适应高度（**默认开启**）：不传即启用默认配置（minHeight 240/extraGap 40），传 `{ minHeight, extraGap, watchSources }` 自定义，传 `false` 关闭 |
 
 > **所有未声明的属性和事件（如 `@row-click`、`highlight-current-row`、`@cell-click`）会自动透传到内层 el-table**，像使用原生 el-table 一样使用即可。
+
+**表格自适应高度（内置，默认开启）**：`CustomTable` 开箱即用——无需任何配置，表格自动占满视口剩余空间（表格内部滚动、分页器固定底部、表格外部不出现滚动条），支持窗口缩放自适应、数据异步加载后分页器出现自动重算：
+
+```vue
+<!-- 零配置：默认即自适应（minHeight 240 / extraGap 40） -->
+<CustomTable v-bind="tableBindings" />
+
+<!-- 自定义：最小高度 / 额外间距 / 联动搜索栏等外部状态 -->
+<CustomTable
+  v-bind="tableBindings"
+  :auto-height="{ minHeight: 240, extraGap: 24, watchSources: [showAdvancedSearch] }"
+/>
+
+<!-- 关闭自适应：表格高度由内容或透传的 height 决定 -->
+<CustomTable v-bind="tableBindings" :auto-height="false" />
+```
+
+> 边界说明：`autoHeight` 开启时**覆盖透传的 `height`**；未配置分页器时按分页器高度 0 计算；默认 `extraGap: 40` 为常见后台布局（内容区 padding + 分页器间距）预留缓冲，需要更紧凑时传 `{ extraGap: 24 }`。**容器基准**：当 `CustomTable` 所在容器被 flex 布局约束（`flex-grow > 0` 或 `flex-basis: 0%`，常见于卡片布局中给容器 `flex: 1`）时，表格高度按容器可用空间计算、精确填满容器（与视口无关），外部滚动条不会出现。**多表格互不影响**：每个 `CustomTable` 实例拥有独立的高度计算与分页状态，同页面多个表格可各自自适应（见 demo「多表格」）。
 
 #### Events
 
@@ -433,6 +481,7 @@ interface PaginationConfig {
 | `arrayToString(data, fields)` | 数组字段转逗号字符串（提交用） |
 | `stringToArray(data, fields)` | 逗号字符串转数组（回显用） |
 | `processTimeRange(params, field, prefix?)` | 时间范围拆分为 `beginTime`/`endTime` |
+| `addDateRange(params, dateRange, fieldConfig?)` | 日期范围写入查询参数 `params.params` 子对象（默认 `beginTime`/`endTime`，支持字符串前缀或 `{ start, end }` 对象配置） |
 | `cleanEmptyFields(data, fields?)` | 清理空值字段 |
 | `convertNumbers(data, fields)` | 字段转数字类型 |
 
@@ -452,7 +501,7 @@ const message = useMessage({
 
 ### `useTableHeight`
 
-表格自适应高度 Hook：动态计算表格最大高度，使其恰好填满视口剩余空间（表格内部滚动、分页器固定底部），配合 `CustomTable` + `Pagination` 使用。思路借鉴公众号「前端打铁铺」同名文章（作者已开源）。
+表格自适应高度 Hook：动态计算表格最大高度，使其恰好填满视口剩余空间（表格内部滚动、分页器固定底部），配合 `CustomTable` + `Pagination` 使用。
 
 **纯计算函数 `calculateTableMaxHeight`：**
 
@@ -476,10 +525,12 @@ calculateTableMaxHeight({
 |--------|------|--------|------|
 | `minHeight` | `number` | `240` | 表格最小高度（px），极端场景兜底 |
 | `extraGap` | `number` | `24` | 页面额外间距补偿（px） |
-| `containerRef` | `Ref` | — | 表格父容器引用，用于读取 `padding-bottom` |
-| `watchSources` | `Ref[]` | `[]` | 需要监听的响应式数据（如搜索栏展开状态），变化时自动重算 |
+| `containerRef` | `Ref` | — | 表格父容器引用：读取容器 `padding-bottom`；当容器被 flex 布局约束（`flex-grow > 0` 或 `flex-basis: 0%`）时，按容器可用空间计算高度（容器基准），表格精确填满所在区域 |
+| `watchSources` | `WatchSource[]` | `[]` | 需要监听的响应式数据（`ref` / `computed` / getter，如搜索栏展开状态），变化时自动重算 |
 
 **与 `CustomTable` 配合示例（height 直接透传给 el-table）：**
+
+> ⚠️ 注意：`CustomTable` 的 `autoHeight` 默认开启并会覆盖透传的 `height`。手动用 `useTableHeight` 接管时需显式 `:auto-height="false"`；若使用原生 `<el-table>` 则无需此步。
 
 ```vue
 <template>
@@ -487,6 +538,7 @@ calculateTableMaxHeight({
     <CustomTable
       v-bind="tableBindings"
       :height="tableMaxHeight"
+      :auto-height="false"
     />
   </div>
 </template>

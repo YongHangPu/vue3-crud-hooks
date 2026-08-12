@@ -15,6 +15,7 @@ vue3-crud-hooks
 |   |   +-- useFormDialog
 |   |   +-- useDataTransform
 |   |   +-- useMessage
+|   |   +-- useTableHeight
 |   |
 |   +-- 导出组件
 |   |   +-- CustomTable.vue
@@ -51,6 +52,11 @@ vue3-crud-hooks
 |       +-- Element Plus 消息适配
 |       +-- 自定义 messageApi 适配
 |
+|   +-- useTableHeight
+|       +-- 纯计算函数 calculateTableMaxHeight
+|       +-- ResizeObserver / resize / watchSources 重算
+|       +-- 容器基准(容器被 flex 约束时按容器可用空间计算)
+|
 +-- components
 |   |
 |   +-- CustomTable.vue
@@ -73,8 +79,11 @@ vue3-crud-hooks
 |   |
 |   +-- response.ts
 |   |   +-- 嵌套包装响应解析(支持 { code, data: { records, total } })
-|   |   +-- 业务成功判断(code ∈ [0, 200, '0', '200'],可自定义 isSuccess)
+|   |   +-- 业务成功判断(code ∈ [0, 200, 1, '0', '200', '1'],可自定义 isSuccess)
 |   |   +-- 响应消息提取(message/msg 兼容)
+|   |
+|   +-- index.ts
+|   |   +-- addDateRange(日期范围写入 params.params 子对象)
 |   |
 |   +-- scroll-to.ts
 |
@@ -162,11 +171,9 @@ vue3-crud-hooks
         +-- addApi() / updateApi()
         +-- isBusinessSuccess()(业务失败不提示成功)
         +-- useMessage.success() / useMessage.error()
+        +-- onSubmitSuccess()(弹窗未关闭,可访问响应数据)
         +-- handleDialogClose()
-        +-- onSubmitSuccess()
-        +-- onSuccess()
-              |
-              +-- 在 useCrudPage 中默认刷新 useTablePage.getTableData()
+        +-- onAfterSubmit()(弹窗已关闭,useCrudPage 中默认刷新列表)
 ```
 
 ### 5. 导出链路

@@ -42,6 +42,18 @@
   width: 100%;
 }
 
+/* 分页器高度修正：文档环境（vitepress 样式干扰）会把 el-pagination 撑高为 64px(两行感)，
+ * 强制恢复 Element Plus 默认单行高度 32px，避免分页器异常变高导致内容溢出预览容器 */
+.vp-doc .el-pagination {
+  height: 32px;
+}
+
+/* 调宽文档内容区：vitepress 默认 .content-container 仅 688px，演示组件(表格/分页器)被挤压，
+ * 放宽后表格与分页器有充足空间、保持单行，代码块与表格也更易读 */
+.VPDoc .content-container {
+  max-width: 960px !important;
+}
+
 /* 操作列按钮间距 — 覆盖库的 scoped CSS（scope ID 在文档构建中可能不匹配） */
 .vp-doc .el-table__cell .el-link + .el-link,
 .vp-doc .el-table__cell .el-button + .el-button,

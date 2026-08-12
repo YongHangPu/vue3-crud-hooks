@@ -3,7 +3,7 @@ import { to } from 'await-to-js'
 import { useDataTransform } from './useDataTransform'
 import { useMessage } from './useMessage'
 import { extractListResult, getResponseMessage, isBusinessSuccess } from '../utils/response'
-import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook, ActionEvent } from '../types'
+import type { TablePageConfig, DeleteConfig, ExportConfig, CustomTableConfig, TablePageHook, ActionEvent, SortInfo } from '../types'
 
 /**
  * 表格页面通用hooks
@@ -170,6 +170,8 @@ export const useTablePage = <T = any>(
   const loading = ref(false)
   // 删除操作加载状态
   const deleteLoading = ref(false)
+  // 导出操作加载状态
+  const exportLoading = ref(false)
   /**
    * 获取初始分页配置
    * @description 从 customTableConfig 中提取分页参数，或使用默认值
@@ -201,6 +203,13 @@ export const useTablePage = <T = any>(
   const searchParams = reactive({
     ...searchForm
   })
+  // 服务端排序信息:启用 sortable 后由 handleSortChange 维护,order 为 null 表示未排序
+  const sortInfo = reactive<SortInfo>({
+    prop: '',
+    order: null
+  })
+  // 服务端筛选信息:启用 filterable 后由 handleFilterChange 维护,prop → 选中的筛选值数组
+  const filterInfo = reactive<Record<string, any[]>>({})
   // 选中的数据行
   const selectedRows = ref<any[]>([])
   // 选中的ID列表
@@ -236,6 +245,29 @@ export const useTablePage = <T = any>(
       pageNum: pageInfo.pageNum,
       pageSize: pageInfo.pageSize,
       ...searchParams
+    }
+
+    // 服务端排序:sortable 为 true 时按默认映射({ orderByColumn, isAsc })并入,
+    // 为函数时使用自定义映射;返回 null/undefined 时不并入
+    if (finalConfig.sortable && sortInfo.prop && sortInfo.order) {
+      const sortParams =
+        typeof finalConfig.sortable === 'function'
+          ? finalConfig.sortable(sortInfo)
+          : { orderByColumn: sortInfo.prop, isAsc: sortInfo.order === 'ascending' ? 'asc' : 'desc' }
+      if (sortParams) {
+        requestParams = { ...requestParams, ...sortParams }
+      }
+    }
+
+    // 服务端筛选:filterable 为 true 时筛选值数组原样展开,为函数时使用自定义映射
+    if (finalConfig.filterable && Object.keys(filterInfo).length) {
+      const filterParams =
+        typeof finalConfig.filterable === 'function'
+          ? finalConfig.filterable(filterInfo)
+          : { ...filterInfo }
+      if (filterParams) {
+        requestParams = { ...requestParams, ...filterParams }
+      }
     }
 
     try {
@@ -326,11 +358,15 @@ export const useTablePage = <T = any>(
 
   /**
    * 重置处理
-   * @description 重置搜索条件和页码，重新获取数据
+   * @description 重置搜索条件、排序与筛选，重置页码，重新获取数据
    */
   const handleReset = () => {
     pageInfo.pageNum = 1
     Object.assign(searchParams, searchForm)
+    // 重置服务端排序与筛选状态
+    sortInfo.prop = ''
+    sortInfo.order = null
+    Object.keys(filterInfo).forEach((key) => delete filterInfo[key])
     getTableData()
   }
 
@@ -366,12 +402,57 @@ export const useTablePage = <T = any>(
   }
 
   /**
+   * 切换列显隐
+   * @param prop 列字段名(需配置了 prop 的列)
+   * @param visible 可选:指定显隐(visible=true 显示、false 隐藏);缺省时取反当前状态
+   * @description 直接修改响应式列配置,无需手动重组列数组;配合 getVisibleColumns 使用
+   */
+  const toggleColumn = (prop: string, visible?: boolean) => {
+    const columns = finalConfig.customTableConfig?.columns
+    if (!columns) return
+    const column = columns.find((col) => col.prop === prop)
+    if (!column) return
+    column.hidden = visible === undefined ? !column.hidden : !visible
+  }
+
+  /**
+   * 获取当前可见列
+   * @returns 未隐藏的列配置数组
+   */
+  const getVisibleColumns = () => {
+    return (finalConfig.customTableConfig?.columns || []).filter((col) => !col.hidden)
+  }
+
+  /**
    * 表格选择改变处理
    * @param selection 选中的数据
    * @description 更新选中的数据状态
    */
   const handleSelectionChange = (selection: any[]) => {
     selectedRows.value = selection
+  }
+
+  /**
+   * 排序变化处理
+   * @param sort 排序信息 { prop, order },order 为 null 表示取消排序
+   * @description 更新服务端排序状态并重置页码刷新数据
+   */
+  const handleSortChange = (sort: SortInfo) => {
+    sortInfo.prop = sort?.prop ?? ''
+    sortInfo.order = sort?.order ?? null
+    pageInfo.pageNum = 1
+    getTableData()
+  }
+
+  /**
+   * 筛选变化处理
+   * @param filters 筛选信息 { [prop]: 选中值数组 }
+   * @description Element Plus 每次仅返回发生变化的列,合并保留其他列筛选状态,重置页码刷新数据
+   */
+  const handleFilterChange = (filters: Record<string, any[]>) => {
+    Object.assign(filterInfo, filters || {})
+    pageInfo.pageNum = 1
+    getTableData()
   }
 
   /**
@@ -548,6 +629,22 @@ export const useTablePage = <T = any>(
     },
 
     /**
+     * 处理排序变化
+     * @param sort 排序信息
+     */
+    onSortChange: (sort: SortInfo) => {
+      handleSortChange(sort)
+    },
+
+    /**
+     * 处理筛选变化
+     * @param filters 筛选信息
+     */
+    onFilterChange: (filters: Record<string, any[]>) => {
+      handleFilterChange(filters)
+    },
+
+    /**
      * 处理操作按钮点击
      * @param event 事件名
      * @param row 行数据
@@ -576,6 +673,23 @@ export const useTablePage = <T = any>(
     loading: loading.value,
     ...tableEventHandlers
   }))
+
+  /**
+   * 触发浏览器下载 Blob
+   * @param blob 要下载的二进制数据
+   * @param filename 下载文件名
+   */
+  const downloadBlob = (blob: Blob, filename: string) => {
+    if (typeof window === 'undefined') return
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   /**
    * 导出处理
@@ -610,15 +724,30 @@ export const useTablePage = <T = any>(
       processed = arrayToString(processed, finalConfig.arrayFields)
     }
 
-    // 调用自定义导出函数,支持异步实现(如 POST + Blob)
+    exportLoading.value = true
     try {
-      await finalExportConfig.exportFunction({
+      // 调用自定义导出函数,支持异步实现(如 POST + Blob)
+      const result = await finalExportConfig.exportFunction({
         url,
         params: processed,
         filename
       })
+      // 约定:exportFunction 返回 Blob(或 { blob })时自动触发浏览器下载,无需手写下载逻辑
+      const blob = result instanceof Blob ? result : (result?.blob instanceof Blob ? result.blob : null)
+      if (blob) {
+        downloadBlob(blob, filename)
+      }
+      // 导出成功回调
+      finalExportConfig.onExportSuccess?.(result)
     } catch (error) {
-      showMessage.error(`导出失败: ${error instanceof Error ? error.message : String(error)}`)
+      // 导出失败:配置 onExportError 时交给回调,否则默认提示错误消息
+      if (finalExportConfig.onExportError) {
+        finalExportConfig.onExportError(error)
+      } else {
+        showMessage.error(`导出失败: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    } finally {
+      exportLoading.value = false
     }
   }
 
@@ -664,10 +793,17 @@ export const useTablePage = <T = any>(
     handlePageChange,
     handleSizeChange,
     handleSelectionChange,
+    sortInfo,
+    filterInfo,
+    handleSortChange,
+    handleFilterChange,
     handleDelete,
     handleBatchDelete,
     handleExport,
+    exportLoading,
     tableBindings,
-    setTableColumns
+    setTableColumns,
+    toggleColumn,
+    getVisibleColumns
   }
 }

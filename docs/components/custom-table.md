@@ -48,8 +48,11 @@ CustomTable 会将**未声明的属性和事件**自动透传到内层 `<el-tabl
 | `data` | `any[]` | `[]` | 表格数据 |
 | `loading` | `boolean` | `false` | 加载状态（显示加载遮罩） |
 | `props` | `Partial<TableProps>` | `{}` | 透传给 el-table 的属性（border, stripe 等，优先级高于 config.props） |
+| `autoHeight` | `boolean \| AutoHeightOptions` | `true` | 表格自适应高度（**默认开启**）：不传即自适应（minHeight 240 / extraGap 40），传对象自定义 `{ minHeight, extraGap, watchSources }`，传 `false` 关闭 |
 
 > 所有未在 Props 中声明的属性和事件都会透传到 `<el-table>`。
+
+**表格自适应高度（默认开启）**：零配置下表格自动填满所在区域（内部滚动、分页器固定底部、外部不出现滚动条）。当 `CustomTable` 容器被 flex 布局约束（如卡片内 `flex: 1`）时，表格高度按容器可用空间精确计算（容器基准，与视口无关）；多个表格同页互不影响，各自独立自适应。详见 README「CustomTable 表格自适应高度」。
 
 ### Events
 
@@ -103,6 +106,7 @@ interface CustomTableConfig {
 | `align` / `headerAlign` | `'left' \| 'center' \| 'right'` | 对齐方式 |
 | `fixed` | `boolean \| 'left' \| 'right'` | 固定列 |
 | `sortable` | `boolean \| 'custom'` | 排序 |
+| `resizable` | `boolean` | 是否可调整列宽 |
 | `filters` / `filterMethod` | — | 筛选 |
 | `formatter` | `(row, column, cell, index) => any` | 格式化函数 |
 | `showOverflowTooltip` | `boolean` | 溢出 tooltip |
@@ -120,7 +124,7 @@ interface CustomTableConfig {
 | `event` | `string` | 事件名（触发 `@action` 事件） |
 | `btnText` | `string` | 按钮文本 |
 | `btnType` | `'link' \| 'button'` | 按钮类型，默认 `'link'`（渲染为 el-link） |
-| `type` | `'primary' \| 'success' \| 'danger' \| 'warning' \| 'info'` | 样式 |
+| `type` | `'primary' \| 'success' \| 'danger' \| 'warning' \| 'info' \| 'text' \| 'default'` | 样式 |
 | `disabled` | `boolean \| (row) => boolean` | 禁用 |
 | `visible` | `(row) => boolean` | 显示/隐藏 |
 | `props` | `Record<string, any>` | 其他透传属性（如 `size`, `plain`, `round` 等） |

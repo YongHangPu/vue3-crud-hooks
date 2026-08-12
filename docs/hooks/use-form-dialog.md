@@ -22,12 +22,13 @@ useFormDialog<T = any>(config: FormDialogConfig<T>): FormDialogHook<T>
 
 | 属性 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `initialFormData` | `T` | ✅ | 表单初始数据 |
+| `initialData` | `T` | ✅ | 表单初始数据（推荐命名，与 `CrudPageConfig.form.initialData` 一致） |
+| `initialFormData` | `T` | — | 兼容旧名称，与 `initialData` 二选一，`initialData` 优先 |
 | `addApi` | `(data: T) => Promise<any>` | — | 新增接口 |
 | `updateApi` | `(data: T) => Promise<any>` | — | 更新接口 |
 | `getApi` | `(id) => Promise<any>` | — | 获取详情接口（编辑时自动回显） |
 | `idKey` | `string` | — | 主键字段名，默认 `'id'` |
-| `formRules` | `any` | — | Element Plus 表单校验规则 |
+| `formRules` | `any` | — | Element Plus 表单校验规则（通过返回的 `formRules` 绑定到 `el-form` 的 `:rules`） |
 | `onAfterSubmit` | `() => void` | — | 提交成功后回调（弹窗已关闭） |
 | `onSubmitSuccess` | `(res, mode, formData) => void` | — | API 成功回调（弹窗未关闭） |
 | `dataTransform` | `DataTransformConfig` | — | 提交前/获取后数据转换 |
@@ -41,6 +42,7 @@ useFormDialog<T = any>(config: FormDialogConfig<T>): FormDialogHook<T>
 | `dialogMode` | `Ref<'add' \| 'edit'>` | 弹窗模式 |
 | `formData` | `Ref<T>` | 表单数据 |
 | `formRef` | `Ref` | el-form 引用（需手动绑定） |
+| `formRules` | `ComputedRef` | 表单校验规则（绑定到 el-form 的 `:rules`） |
 | `submitLoading` | `Ref<boolean>` | 提交按钮加载状态 |
 | `formLoading` | `Ref<boolean>` | 编辑回显加载状态（getApi 时） |
 | `openDialog` | `(mode, row?) => Promise<void>` | 打开弹窗 |

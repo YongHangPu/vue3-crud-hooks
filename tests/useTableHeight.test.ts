@@ -136,6 +136,92 @@ describe('useTableHeight', () => {
     expect(hook.tableMaxHeight.value).toBeLessThan(before)
   })
 
+  it('多个 useTableHeight 实例互不影响(各自独立计算高度)', async () => {
+    // 实例 A:表格顶部 100、分页器高 50
+    const hookA = mountComposable(() =>
+      useTableHeight(
+        ref({ $el: { getBoundingClientRect: () => ({ top: 100 }) } }),
+        ref({ getBoundingClientRect: () => ({ height: 50 }) })
+      )
+    )
+    // 实例 B:表格顶部 300、分页器高 30
+    const hookB = mountComposable(() =>
+      useTableHeight(
+        ref({ $el: { getBoundingClientRect: () => ({ top: 300 }) } }),
+        ref({ getBoundingClientRect: () => ({ height: 30 }) })
+      )
+    )
+    await flushPromises()
+
+    // 各自按自身布局计算,互不干扰
+    expect(hookA.tableMaxHeight.value).toBe(900 - 100 - 50 - 24)
+    expect(hookB.tableMaxHeight.value).toBe(900 - 300 - 30 - 24)
+  })
+
+  it('容器被 flex 约束(flex-grow)时按容器基准计算高度,而非视口', async () => {
+    const { tableRef, paginationRef } = createRefs()
+    const containerEl = document.createElement('div')
+    const parentEl = document.createElement('div')
+    parentEl.appendChild(containerEl)
+    // 模拟容器为 flex item(flex-grow:1、flex-basis:0%,父级 display:flex),高度由布局约束为 500
+    const computedMock = vi.spyOn(window, 'getComputedStyle').mockImplementation(((el: any) => {
+      if (el === containerEl) return { flexGrow: '1', flexBasis: '0%', height: 'auto', paddingBottom: '0px' } as CSSStyleDeclaration
+      if (el === parentEl) return { display: 'flex' } as CSSStyleDeclaration
+      return { paddingBottom: '16px' } as CSSStyleDeclaration
+    }) as typeof window.getComputedStyle)
+    containerEl.getBoundingClientRect = () => ({ height: 500, top: 0 }) as any
+
+    const hook = mountComposable(() =>
+      useTableHeight(tableRef, paginationRef, { containerRef: ref(containerEl) })
+    )
+    await flushPromises()
+
+    // 容器基准:500(容器高) - 100(表格在容器内偏移) - 50(分页器) - 24(extraGap) - 0(容器 padding) = 326
+    expect(hook.tableMaxHeight.value).toBe(500 - 100 - 50 - 24)
+    computedMock.mockRestore()
+  })
+
+  it('容器无外部约束时回退视口基准', async () => {
+    const { tableRef, paginationRef } = createRefs()
+    const containerEl = document.createElement('div')
+    // 容器非 flex item(父级 display:block),flex-grow 0、flex-basis auto → 走视口基准
+    const computedMock = vi.spyOn(window, 'getComputedStyle').mockImplementation(((el: any) => {
+      if (el === containerEl) return { flexGrow: '0', flexBasis: 'auto', height: 'auto', paddingBottom: '0px' } as CSSStyleDeclaration
+      if (el === containerEl.parentElement) return { display: 'block' } as CSSStyleDeclaration
+      return { paddingBottom: '16px' } as CSSStyleDeclaration
+    }) as typeof window.getComputedStyle)
+
+    const hook = mountComposable(() =>
+      useTableHeight(tableRef, paginationRef, { containerRef: ref(containerEl) })
+    )
+    await flushPromises()
+
+    // 视口基准:900 - 100 - 50 - 24 - 0(容器 paddingBottom mock 为 0)= 726
+    expect(hook.tableMaxHeight.value).toBe(726)
+    computedMock.mockRestore()
+  })
+
+  it('分页器延迟渲染(引用从 undefined 变为有值)时自动重算并补充监听', async () => {
+    const { tableRef, paginationRef } = createRefs()
+    // 模拟数据未加载、分页器尚未渲染
+    paginationRef.value = undefined as any
+
+    const hook = mountComposable(() => useTableHeight(tableRef, paginationRef))
+    await flushPromises()
+    // 分页器高度按 0 计算:900 - 100 - 0 - 24 = 776
+    expect(hook.tableMaxHeight.value).toBe(776)
+
+    // 数据加载后分页器出现
+    paginationRef.value = { getBoundingClientRect: () => ({ height: 50 }) }
+    await flushPromises()
+    await flushPromises()
+    // 重算:900 - 100 - 50 - 24 = 726
+    expect(hook.tableMaxHeight.value).toBe(726)
+
+    // 新出现的分页器已被 ResizeObserver 监听(observe 幂等,重复调用无副作用)
+    expect(ResizeObserverMock.instances[0].observed).toContain(paginationRef.value)
+  })
+
   it('卸载时移除 resize 监听并断开 observer', async () => {
     const removeSpy = vi.spyOn(window, 'removeEventListener')
     const { tableRef, paginationRef } = createRefs()

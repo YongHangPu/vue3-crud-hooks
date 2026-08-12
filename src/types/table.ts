@@ -1,6 +1,7 @@
 import type { MessageApi } from './common'
 
 import type { Ref, ComputedRef } from 'vue'
+import type { WatchSource } from '../hooks/useTableHeight'
 
 /**
  * 内置表格操作事件
@@ -12,6 +13,17 @@ export type BuiltInActionEvent = 'edit' | 'delete'
  * @description 内置 edit/delete 获得类型提示,同时通过 `string & {}` 允许任意自定义事件名
  */
 export type ActionEvent = BuiltInActionEvent | (string & {})
+
+/**
+ * 服务端排序信息
+ * @description el-table sort-change 事件载荷的简化版
+ */
+export interface SortInfo {
+  /** 排序字段 */
+  prop: string
+  /** 排序方向,取消排序时为 null */
+  order: 'ascending' | 'descending' | null
+}
 
 /**
  * 分页配置
@@ -63,6 +75,18 @@ export interface TableButtonConfig<T = any> {
  * 操作按钮配置(btnText 必填,用于 action 列渲染)
  */
 export type ActionButton<T = any> = TableButtonConfig<T> & { btnText: string }
+
+/**
+ * 表格自适应高度配置(CustomTable 的 autoHeight 传对象时使用)
+ */
+export interface AutoHeightOptions {
+  /** 表格最小高度(px),默认 240 */
+  minHeight?: number
+  /** 页面额外间距补偿(px),默认 24 */
+  extraGap?: number
+  /** 需要监听的外部响应式数据(如搜索栏展开状态),变化时自动重算 */
+  watchSources?: WatchSource[]
+}
 
 /**
  * 表格列配置
@@ -142,6 +166,8 @@ export interface TablePageHook<T = any> {
   loading: Ref<boolean>
   /** 删除操作加载状态 */
   deleteLoading: Ref<boolean>
+  /** 导出操作加载状态 */
+  exportLoading: Ref<boolean>
   /** 分页信息 */
   pageInfo: {
     pageNum: number
@@ -166,6 +192,18 @@ export interface TablePageHook<T = any> {
   handleSizeChange: (size: number) => void
   /** 表格选择变化 */
   handleSelectionChange: (selection: T[]) => void
+  /** 服务端排序信息(启用 sortable 后维护,reactive) */
+  sortInfo: SortInfo
+  /** 服务端筛选信息(启用 filterable 后维护,prop → 选中值数组,reactive) */
+  filterInfo: Record<string, any[]>
+  /** 排序变化处理(更新 sortInfo 并重置页码刷新数据) */
+  handleSortChange: (sort: SortInfo) => void
+  /** 筛选变化处理(合并更新 filterInfo 并重置页码刷新数据) */
+  handleFilterChange: (filters: Record<string, any[]>) => void
+  /** 切换列显隐(visible 缺省时取反当前状态,列需配置 prop) */
+  toggleColumn: (prop: string, visible?: boolean) => void
+  /** 获取当前可见列 */
+  getVisibleColumns: () => TableColumnConfig<T>[]
   /** 单行删除 */
   handleDelete: (row: T) => Promise<void>
   /** 批量删除选中行 */
@@ -173,9 +211,34 @@ export interface TablePageHook<T = any> {
   /** 导出数据,支持异步 exportFunction */
   handleExport: (options?: { url?: string; filename?: string; params?: any }) => Promise<void>
   /** 可通过 v-bind="tableBindings" 绑定到 CustomTable */
-  tableBindings: ComputedRef<Record<string, any>>
+  tableBindings: ComputedRef<TableBindings<T>>
   /** 动态更新列配置 */
   setTableColumns: (columns: TableColumnConfig<T>[]) => void
+}
+
+/**
+ * CustomTable 一键绑定属性集
+ * @description useTablePage / useCrudPage 的 tableBindings 类型,
+ * 可直接 `v-bind="tableBindings"` 绑定到 `<CustomTable>`
+ * @template T 行数据类型
+ */
+export interface TableBindings<T = any> {
+  /** CustomTable 组件配置 */
+  config: CustomTableConfig | null
+  /** 表格数据 */
+  data: T[]
+  /** 加载状态 */
+  loading: boolean
+  /** 选择变化事件 */
+  onSelectionChange: (selection: T[]) => void
+  /** 排序变化事件 */
+  onSortChange: (sort: SortInfo) => void
+  /** 筛选变化事件 */
+  onFilterChange: (filters: Record<string, any[]>) => void
+  /** 分页变化事件 */
+  onPagination: (pagination: { currentPage: number; pageSize: number }) => void
+  /** 操作按钮事件 */
+  onAction: (event: ActionEvent, row: any, index: number) => void
 }
 
 /**
@@ -206,6 +269,10 @@ export interface TablePageConfig {
   messageApi?: Partial<MessageApi>
   /** 导出URL */
   exportUrl?: string
+  /** 服务端排序:true 启用默认参数映射({ orderByColumn: prop, isAsc: 'asc' | 'desc' }),或传函数自定义映射(返回 null/undefined 时不并入请求) */
+  sortable?: boolean | ((sort: SortInfo) => Record<string, any> | null | undefined)
+  /** 服务端筛选:true 启用(筛选值数组原样展开进请求参数),或传函数自定义映射(返回 null/undefined 时不并入请求) */
+  filterable?: boolean | ((filters: Record<string, any[]>) => Record<string, any> | null | undefined)
 }
 
 /**
@@ -242,4 +309,8 @@ export interface ExportConfig {
   timeFields?: Array<{ field: string; prefix: string | { start: string; end: string } }>
   /** 数据主键字段名 */
   idKey?: string
+  /** 导出成功回调(exportFunction resolve 后触发;返回 Blob 或 { blob } 时已自动触发浏览器下载) */
+  onExportSuccess?: (result: any) => void
+  /** 导出失败回调(exportFunction reject 时触发;不配置时默认提示错误消息) */
+  onExportError?: (error: any) => void
 }

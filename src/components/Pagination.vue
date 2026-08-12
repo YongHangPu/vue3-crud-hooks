@@ -76,6 +76,7 @@ function handleCurrentChange(val: number) {
 .pagination-container {
   display: flow-root;
   width: 100%;
+  margin-top: 16px;
 
   .el-pagination {
     float: v-bind('props.align');

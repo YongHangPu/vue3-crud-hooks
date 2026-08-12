@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
 import type { ApiResponse, MessageApi } from './common'
 
 /**
@@ -12,6 +12,8 @@ export interface FormDialogHook<T = any> {
   dialogMode: Ref<'add' | 'edit'>
   /** el-form 组件引用 */
   formRef: Ref<any>
+  /** 表单验证规则(响应式,可直接绑定到 el-form 的 :rules,来自 config.formRules) */
+  formRules: ComputedRef<any>
   /** 提交操作加载状态 */
   submitLoading: Ref<boolean>
   /** 编辑回显数据加载状态 */

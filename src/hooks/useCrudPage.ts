@@ -34,7 +34,9 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       messageApi: advanced.messageApi,
       isSuccess: advanced.isSuccess,
       transformResponse: table.transformResponse,
-      exportUrl: table.exportUrl
+      exportUrl: table.exportUrl,
+      sortable: table.sortable,
+      filterable: table.filterable
     },
     {
       // 删除配置
@@ -52,7 +54,9 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
       exportFunction: apis.export,
       arrayFields: advanced.arrayFields,
       timeFields: advanced.timeFields,
-      idKey: table.idKey
+      idKey: table.idKey,
+      onExportSuccess: advanced.onExportSuccess,
+      onExportError: advanced.onExportError
     }
   )
 
@@ -130,6 +134,10 @@ export const useCrudPage = <T = any>(config: CrudPageConfig<T>): CrudPageHook<T>
     onSelectionChange: tablePageHook.tableBindings.value?.onSelectionChange ?? (() => {}),
     /** 转发分页事件到 useTablePage 处理器 */
     onPagination: tablePageHook.tableBindings.value?.onPagination ?? (() => {}),
+    /** 转发排序事件到 useTablePage 处理器 */
+    onSortChange: tablePageHook.tableBindings.value?.onSortChange ?? (() => {}),
+    /** 转发筛选事件到 useTablePage 处理器 */
+    onFilterChange: tablePageHook.tableBindings.value?.onFilterChange ?? (() => {}),
 
     /**
      * 重写操作按钮点击处理

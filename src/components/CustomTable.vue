@@ -1,8 +1,8 @@
 <template>
-  <div class="custom-table-container" :class="containerClass" :style="containerStyle">
+  <div class="custom-table-container" :class="containerClass" :style="containerStyle" ref="tableContainerRef">
     <el-table
       :ref="setTableRef"
-      v-bind="forwardedAttrs"
+      v-bind="tableBindAttrs"
       :data="tableData"
       v-loading="loading"
       @selection-change="handleSelectionChange"
@@ -92,6 +92,7 @@
     <!-- 使用封装好的分页组件 - 只有在配置了分页且不为false时才显示 -->
     <pagination
       v-if="shouldShowPagination"
+      :ref="setPaginationRef"
       v-bind="paginationProps"
       @pagination="handlePagination"
     />
@@ -109,7 +110,8 @@ import type { TableInstance } from 'element-plus'
 import type {} from 'lodash-unified'
 import Pagination from './Pagination.vue'
 // 复用共享类型,避免在组件内重复定义列/按钮配置
-import type { CustomTableConfig, TableColumnConfig, TableButtonConfig, ActionEvent } from '../types/table'
+import type { CustomTableConfig, TableColumnConfig, TableButtonConfig, ActionEvent, AutoHeightOptions } from '../types/table'
+import { useTableHeight } from '../hooks/useTableHeight'
 
 /**
  * 组件属性接口
@@ -125,13 +127,21 @@ interface Props {
   /** 透传给 el-table 的属性（border、stripe 等，优先级高于 config.props） */
   props?: Record<string, any>
   loading?: boolean
+  /**
+   * 表格自适应高度:默认开启,一行内置即可让表格填满视口剩余空间(表格内部滚动、分页器固定底部)。
+   * - 不传/传 `true`:启用默认配置(minHeight 240 / extraGap 24)
+   * - 传 `AutoHeightOptions` 对象:自定义 minHeight / extraGap / watchSources
+   * - 传 `false`:关闭自适应,表格高度由内容或透传的 height 决定
+   */
+  autoHeight?: boolean | AutoHeightOptions
 }
 
 const props = withDefaults(defineProps<Props>(), {
   config: () => ({ columns: [] }),
   data: () => [],
   props: () => ({}),
-  loading: false
+  loading: false,
+  autoHeight: true
 })
 
 // 关闭属性继承，手动转发 el-table 原生属性
@@ -168,6 +178,47 @@ const tableRef = ref<TableInstance>()
 const setTableRef = (el: any) => {
   tableRef.value = el
 }
+
+// 内部分页器引用:供 useTableHeight 等需要读取分页器尺寸的场景使用
+const paginationRef = ref()
+const setPaginationRef = (el: any) => {
+  paginationRef.value = el
+}
+
+// 容器引用:传给 useTableHeight 做「容器基准」计算——
+// 当容器被外部布局约束(flex-grow / 固定高度)时,表格高度精确填满容器,不依赖视口
+const tableContainerRef = ref<HTMLElement>()
+
+// ── 内置自适应高度 ──
+// 解析 autoHeight 配置:true 用默认值,对象则合并默认值。
+// 默认 extraGap 40:为常见后台布局(内容区 padding + 分页器间距)预留缓冲,保证表格外部不出现滚动条;
+// 需要更紧凑时可传对象自定义,如 { extraGap: 24 }
+const DEFAULT_AUTO_HEIGHT = { minHeight: 240, extraGap: 40 } as const
+const autoHeightOption = computed<AutoHeightOptions | null>(() => {
+  if (props.autoHeight === true) {
+    return { ...DEFAULT_AUTO_HEIGHT }
+  }
+  if (props.autoHeight && typeof props.autoHeight === 'object') {
+    return { ...DEFAULT_AUTO_HEIGHT, ...props.autoHeight }
+  }
+  return null
+})
+// 内部调用 useTableHeight:tableRef/paginationRef 均为组件内部引用,无需外部接线;
+// enabled 跟随 autoHeight 配置,未开启时零开销(不注册监听)
+const { tableMaxHeight } = useTableHeight(tableRef, paginationRef, {
+  enabled: autoHeightOption.value !== null,
+  minHeight: autoHeightOption.value?.minHeight ?? DEFAULT_AUTO_HEIGHT.minHeight,
+  extraGap: autoHeightOption.value?.extraGap ?? DEFAULT_AUTO_HEIGHT.extraGap,
+  watchSources: autoHeightOption.value?.watchSources,
+  containerRef: tableContainerRef,
+})
+// autoHeight 启用时将计算出的高度注入 el-table,否则保持原有 height 透传
+const tableBindAttrs = computed(() => {
+  if (autoHeightOption.value) {
+    return { ...forwardedAttrs.value, height: tableMaxHeight.value || undefined }
+  }
+  return forwardedAttrs.value
+})
 
 // 表格属性
 const tableProps = computed(() => ({
@@ -378,10 +429,11 @@ const getColumnBindProps = (column: TableColumnConfig) => {
 }
 
 // 暴露方法给父组件
-// 暴露窄类型:tableRef 仍指向 el-table 实例(运行时),但声明层收敛为 any,
-// 避免完整的 TableInstance 类型链(含 element-plus 内部路径与 lodash-unified)泄漏进 d.ts
+// 暴露窄类型:tableRef 仍指向 el-table 实例、paginationRef 指向内部分页器组件实例(运行时),
+// 但声明层收敛为 any,避免完整类型链(含 element-plus 内部路径与 lodash-unified)泄漏进 d.ts
 defineExpose({
-  tableRef: tableRef as any
+  tableRef: tableRef as any,
+  paginationRef: paginationRef as any,
 })
 </script>
 
@@ -392,6 +444,12 @@ defineExpose({
 
 .custom-table-container :deep(.pagination-container) {
   margin-top: 20px;
+}
+
+/* 防止 el-table 被外层 flex 布局压缩:autoHeight 注入的固定 height 必须生效,
+   高度由 useTableHeight 计算控制,内容在表格内部滚动、分页器固定底部 */
+.custom-table-container :deep(.el-table) {
+  flex-shrink: 0;
 }
 
 /* 操作列按钮间距 */

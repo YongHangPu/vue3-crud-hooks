@@ -26,6 +26,9 @@ features:
   - title: useDataTransform
     details: 数据转换工具，数组↔字符串互转、时间范围拆分、空值清理
     link: /hooks/use-data-transform
+  - title: useTableHeight
+    details: 表格自适应高度，填满视口/容器剩余空间，表格内部滚动、分页器固定底部
+    link: /hooks/use-table-height
   - title: CustomTable 组件
     details: 配置驱动 el-table 封装，支持 el-table 原生属性/事件透传
   - title: Pagination 组件
@@ -40,7 +43,7 @@ features:
 pnpm add vue3-crud-hooks
 ```
 
-需要同级安装 `vue@^3` 和 `element-plus@^2`。
+需要同级安装 `vue@^3.5`（库使用了 `defineModel` 特性）和 `element-plus@^2`。
 
 如果你使用 `CustomTable` 或 `Pagination` 组件，请额外引入组件样式：
 
