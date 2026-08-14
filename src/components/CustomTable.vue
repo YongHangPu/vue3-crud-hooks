@@ -48,24 +48,28 @@
             <!-- 操作按钮 -->
             <template #default="scope">
               <slot name="action" :row="scope.row" :index="scope.$index">
-                <template v-for="(btn, btnIndex) in column.buttons" :key="btnIndex">
-                  <el-link
-                    v-if="btn.btnType !== 'button'"
-                    v-bind="getButtonProps(btn, scope.row)"
-                    @click="handleAction(btn.event, scope.row, scope.$index)"
-                    v-show="isButtonVisible(btn, scope.row)"
-                  >
-                    {{ btn.btnText }}
-                  </el-link>
-                  <el-button
-                    v-else
-                    v-bind="getButtonProps(btn, scope.row)"
-                    @click="handleAction(btn.event, scope.row, scope.$index)"
-                    v-show="isButtonVisible(btn, scope.row)"
-                  >
-                    {{ btn.btnText }}
-                  </el-button>
-                </template>
+                <!-- 按钮容器:flex + gap 控制间距(替代相邻兄弟 margin-left,
+                     避免 v-show 隐藏按钮仍占据 DOM 位置导致第一个可见按钮被错误加间距) -->
+                <div class="action-buttons">
+                  <template v-for="(btn, btnIndex) in column.buttons" :key="btnIndex">
+                    <el-link
+                      v-if="btn.btnType !== 'button'"
+                      v-bind="getButtonProps(btn, scope.row)"
+                      @click="handleAction(btn.event, scope.row, scope.$index)"
+                      v-show="isButtonVisible(btn, scope.row)"
+                    >
+                      {{ btn.btnText }}
+                    </el-link>
+                    <el-button
+                      v-else
+                      v-bind="getButtonProps(btn, scope.row)"
+                      @click="handleAction(btn.event, scope.row, scope.$index)"
+                      v-show="isButtonVisible(btn, scope.row)"
+                    >
+                      {{ btn.btnText }}
+                    </el-button>
+                  </template>
+                </div>
               </slot>
             </template>
           </el-table-column>
@@ -452,12 +456,12 @@ defineExpose({
   flex-shrink: 0;
 }
 
-/* 操作列按钮间距 */
-/* 注意：使用平铺选择器而非 CSS 嵌套，确保在未配置 postcss-nesting 的构建中也能生效 */
-.custom-table-container :deep(.el-table__cell .el-link + .el-link),
-.custom-table-container :deep(.el-table__cell .el-button + .el-button),
-.custom-table-container :deep(.el-table__cell .el-link + .el-button),
-.custom-table-container :deep(.el-table__cell .el-button + .el-link) {
-  margin-left: 8px;
+/* 操作列按钮间距:flex gap 控制(替代相邻兄弟 margin-left)。
+   注意:若用 margin-left + v-show(display:none)隐藏按钮,隐藏按钮仍占据 DOM 位置,
+   会导致第一个可见按钮被误加间距;flex gap 下隐藏元素不占位、不产生 gap */
+.custom-table-container :deep(.el-table__cell .action-buttons) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

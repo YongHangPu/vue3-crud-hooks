@@ -15,8 +15,6 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: false,
-
     nav: [
       { text: '首页', link: '/' },
       { text: '架构', link: '/architecture' },
@@ -39,6 +37,7 @@ export default defineConfig({
         ]
       },
       { text: '更新日志', link: '/changelog' },
+      { text: '示例项目', link: 'https://yonghangpu.github.io/vue3-crud-hooks-demo' },
       {
         text: 'GitHub',
         link: 'https://github.com/YongHangPu/vue3-crud-hooks'

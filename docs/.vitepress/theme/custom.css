@@ -54,12 +54,12 @@
   max-width: 960px !important;
 }
 
-/* 操作列按钮间距 — 覆盖库的 scoped CSS（scope ID 在文档构建中可能不匹配） */
-.vp-doc .el-table__cell .el-link + .el-link,
-.vp-doc .el-table__cell .el-button + .el-button,
-.vp-doc .el-table__cell .el-link + .el-button,
-.vp-doc .el-table__cell .el-button + .el-link {
-  margin-left: 8px !important;
+/* 操作列按钮间距 — 覆盖库的 scoped CSS(scope ID 在文档构建中可能不匹配)。
+   使用 flex gap 而非相邻兄弟 margin-left,避免 v-show 隐藏按钮导致首个可见按钮被误加间距 */
+.vp-doc .el-table__cell .action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 暗色模式下 el-table 固定列/补丁背景修复

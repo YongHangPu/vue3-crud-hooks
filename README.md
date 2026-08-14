@@ -5,7 +5,15 @@
 [![npm version](https://img.shields.io/npm/v/vue3-crud-hooks.svg)](https://www.npmjs.com/package/vue3-crud-hooks)
 [![License](https://img.shields.io/npm/l/vue3-crud-hooks.svg)](https://github.com/YongHangPu/vue3-crud-hooks/blob/main/LICENSE)
 
-[贡献指南](./CONTRIBUTING.md) · [行为准则](./CODE_OF_CONDUCT.md)
+[贡献指南](./CONTRIBUTING.md) · [行为准则](./CODE_OF_CONDUCT.md) · [在线示例](https://github.com/YongHangPu/vue3-crud-hooks-demo)
+
+---
+
+## 🎮 在线示例
+
+完整后台管理演示项目已开源:[**vue3-crud-hooks-demo**](https://github.com/YongHangPu/vue3-crud-hooks-demo)
+
+覆盖本库全部能力:完整 CRUD 页面(搜索/分页/新增/编辑/删除/导出/业务码校验)、服务端排序与列筛选、列显隐、多表格并存、表格自适应高度、路由懒加载、暗色模式等。
 
 ---
 
