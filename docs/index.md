@@ -95,7 +95,7 @@ const { tableBindings, searchParams, handleSearch, handleReset } = useCrudPage({
 
 `vue3-crud-hooks` 聚焦中后台管理系统中最常见的 **CRUD 页面**场景，通过组合式 API 将重复逻辑抽象为可复用的 Hooks，配合开箱即用的 `CustomTable` 组件，大幅减少模板代码。
 
-> 🎮 想看真实效果?访问 [**在线示例项目**](https://github.com/YongHangPu/vue3-crud-hooks-demo)(完整后台管理演示:CRUD、排序筛选、多表格、暗色模式等)。
+> 🎮 想看真实效果?访问 [**在线示例项目**](https://yonghangpu.github.io/vue3-crud-hooks-demo)(完整后台管理演示:CRUD、排序筛选、多表格、暗色模式等)。
 
 ### 设计理念
 
